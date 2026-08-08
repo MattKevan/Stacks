@@ -2,10 +2,10 @@
 //
 // The Linux-port package: builds the server-facing subset of StacksCore with
 // plain `swift build` (macOS + Linux arm64/x86_64). Apple-only components
-// (MTP devices, ImageIO cover thumbnailing, Calibre/Mobi/Import/Enrichment
-// client features, Bonjour via Network.framework) are EXCLUDED — the server
-// ingests commands from clients and never runs those paths. The macOS app
-// keeps building the full core via XcodeGen; this package is the headless
+// (MTP devices, ImageIO cover thumbnailing, Calibre and Enrichment client
+// features, Bonjour via Network.framework) are EXCLUDED — the server ingests
+// commands from clients and never runs those paths. The macOS app keeps
+// building the full core via XcodeGen; this package is the headless
 // `stacks` surface.
 import PackageDescription
 
@@ -22,6 +22,8 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "4.5.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.19"),
+        .package(url: "https://github.com/awxkee/libmobi-swift.git", exact: "1.0.2"),
     ],
     targets: [
         .target(
@@ -31,12 +33,12 @@ let package = Package(
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+                .product(name: "libmobi", package: "libmobi-swift"),
             ],
             path: "StacksCore",
             // Apple-only / client-only code the headless server never runs.
             exclude: [
-                "MobiImport",
-                "Import",
                 "Enrichment",
                 "Devices",
                 "Vendored",
@@ -61,14 +63,14 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+                .product(name: "libmobi", package: "libmobi-swift"),
             ],
             path: "StacksCoreTests",
             // Mirrors the core target's excludes: tests referencing excluded
-            // client features (Calibre/Mobi/Import/Enrichment/Devices) and
-            // macOS-only surfaces (BonjourTests uses Network.framework).
+            // client features (Calibre/Enrichment/Devices) and macOS-only
+            // surfaces (BonjourTests uses Network.framework).
             exclude: [
-                "MobiImport",
-                "Import",
                 "Enrichment",
                 "Devices",
                 "Security",
@@ -77,6 +79,13 @@ let package = Package(
                 "Library/CoverThumbnailerTests.swift",
                 "Library/BookFolderTests.swift",
                 "Server/BonjourTests.swift",
+            ],
+            // The MOBI reader tests exercise libmobi against a real fixture
+            // file. SwiftPM flattens a processed directory into the bundle
+            // root, matching the flat copy layout XcodeGen produces and the
+            // tests' `Bundle(for:)` lookups expect.
+            resources: [
+                .process("MobiImport/Fixtures"),
             ]
         ),
     ]

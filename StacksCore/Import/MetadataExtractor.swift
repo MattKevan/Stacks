@@ -101,6 +101,7 @@ public enum MetadataExtractor {
     }
 
     private static func extractEPUBCover(from url: URL) throws -> Data? {
+        #if canImport(ImageIO)
         guard let archive = try? Archive(url: url, accessMode: .read, pathEncoding: nil) else { return nil }
         guard let opfPath = try opfPath(in: archive),
               let opfData = try entryData(in: archive, path: opfPath) else {
@@ -113,6 +114,12 @@ public enum MetadataExtractor {
         let resolved = directory.isEmpty ? coverPath : "\(directory)/\(coverPath)"
         guard let data = try entryData(in: archive, path: resolved) else { return nil }
         return normalizeToJPEG(data)
+        #else
+        // Linux: the JPEG normalization below depends on ImageIO. A later task
+        // replaces this with a portable cover decoder; until then EPUB cover
+        // extraction degrades to no cover rather than a failed import.
+        return nil
+        #endif
     }
 
     // MARK: - PDF
@@ -264,6 +271,7 @@ public enum MetadataExtractor {
     /// few MB; 64 MB is generous headroom).
     private static let maxExtractableEntrySize: Int64 = 64 << 20
 
+#if canImport(ImageIO)
     private static func normalizeToJPEG(_ data: Data) -> Data? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
@@ -279,6 +287,7 @@ public enum MetadataExtractor {
         CGImageDestinationFinalize(destination)
         return data as Data
     }
+#endif
 }
 
 public enum ImportError: Error, Equatable {

@@ -7,7 +7,13 @@ struct MobiReaderTests {
     private final class FixtureMarker {}
 
     private func fixtureURL() throws -> URL {
+        // SwiftPM builds test resources into the target's resource bundle;
+        // XcodeGen copies them flat into the test bundle.
+        #if SWIFT_PACKAGE
+        let bundle = Bundle.module
+        #else
         let bundle = Bundle(for: FixtureMarker.self)
+        #endif
         return try #require(bundle.url(forResource: "fixture", withExtension: "mobi"))
     }
 
