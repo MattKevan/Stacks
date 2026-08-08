@@ -1,6 +1,7 @@
 import Foundation
+#if canImport(PDFKit)
 import PDFKit
-import UniformTypeIdentifiers
+#endif
 import ZIPFoundation
 
 public enum FormatKind: String, Sendable {
@@ -72,7 +73,11 @@ public enum MetadataExtractor {
         case .epub:
             return try extractEPUBCover(from: url)
         case .pdf:
+            #if canImport(PDFKit)
             return try renderPDFFirstPage(from: url)
+            #else
+            return nil
+            #endif
         case .djvu:
             return nil
         }
@@ -112,6 +117,7 @@ public enum MetadataExtractor {
 
     // MARK: - PDF
 
+#if canImport(PDFKit)
     private static func extractPDF(from url: URL) -> ExtractedMetadata {
         guard let document = PDFDocument(url: url) else {
             return extractFromFilename(url)
@@ -161,6 +167,55 @@ public enum MetadataExtractor {
         guard let image = context.makeImage() else { return nil }
         return normalizeToJPEG(CGImageToData(image))
     }
+#else
+    private static func extractPDF(from url: URL) -> ExtractedMetadata {
+        extractPDFWithPdfinfo(from: url) ?? extractFromFilename(url)
+    }
+
+    /// Reads PDF metadata from poppler-utils' `pdfinfo` (Linux, where PDFKit
+    /// is unavailable). Returns nil when the tool is missing or fails, letting
+    /// callers fall back to filename-based metadata.
+    private static func extractPDFWithPdfinfo(from url: URL) -> ExtractedMetadata? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/pdfinfo")
+        process.arguments = [url.path]
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: outputData, encoding: .utf8) else { return nil }
+
+        var title: String?
+        var author: String?
+        var keywords: String?
+        for line in output.split(separator: "\n") {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            let key = line[..<colon].trimmingCharacters(in: .whitespaces)
+            guard key == "Title" || key == "Author" || key == "Keywords" else { continue }
+            let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+            guard !value.isEmpty else { continue }
+            switch key {
+            case "Title": title = value
+            case "Author": author = value
+            case "Keywords": keywords = value
+            default: break
+            }
+        }
+
+        return ExtractedMetadata(
+            title: title ?? url.deletingPathExtension().lastPathComponent,
+            authors: author.map { [$0] } ?? [],
+            tags: keywords.map { [$0] } ?? []
+        )
+    }
+#endif
 
     // MARK: - DJVU and fallback
 
