@@ -110,9 +110,12 @@ public enum MobiToEpubConverter {
         let uid = stableID(content)
         // Explicit `: String` pins the join to `Sequence.joined(separator:)`
         // so the NCX is built as plain text. Defensive disambiguation: if
-        // GRDB's `Collection.joined(separator:) -> SQL` overload is ever
-        // visible in this file (whole-module compilation), the joined value
-        // must still resolve to a Foundation String.
+        // GRDB's `Collection.joined(separator:) -> SQL` overload ever becomes
+        // visible in this file (e.g. via an import), the joined value must
+        // still resolve to a Foundation String. The byte-string joins in
+        // `stableID(_:)` are deliberately left unpinned: their element type
+        // is fixed by construction, so any overload change there would fail
+        // loudly at compile time rather than corrupt output.
         let navPoints: String = content.chapters.enumerated()
             .map { index, chapter in
                 let title = escaped(chapter.title ?? "Chapter \(index + 1)")

@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 import StacksCore
 
-/// The headless library server CLI — `stacks create|import|serve|status|import-calibre`.
+/// The headless library server CLI — `stacks create|import-calibre|import|serve|status`.
 @main
 struct StacksCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -45,8 +45,12 @@ private func openOrCreateLibrary(
     if !manifestExists {
         let exists = FileManager.default.fileExists(atPath: root.path)
         if exists {
+            // A regular file at the target is refused like a non-empty
+            // folder: `create` would otherwise surface a raw Cocoa error
+            // instead of a clear validation message.
+            let isDirectory = (try? root.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
             let contents = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
-            guard contents.isEmpty else {
+            guard isDirectory && contents.isEmpty else {
                 throw ValidationError(
                     "\(root.path) is not an empty folder or a Stacks library."
                 )
@@ -175,7 +179,10 @@ struct Import: AsyncParsableCommand {
     @Argument(help: "Path to the library (created if missing)")
     var libraryPath: String
 
-    @Argument(parsing: .remaining, help: "Book files to import")
+    @Argument(
+        parsing: .remaining,
+        help: "Book files to import (everything after the library path is treated as a file, even tokens that look like options)"
+    )
     var files: [String]
 
     func run() async throws {
