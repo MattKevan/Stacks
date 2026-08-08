@@ -1,7 +1,9 @@
-import CoreGraphics
 import Foundation
-import ImageIO
 import ZIPFoundation
+#if canImport(CoreGraphics) && canImport(ImageIO)
+import CoreGraphics
+import ImageIO
+#endif
 
 enum Fixtures {
     /// A minimal EPUB 2.0 archive with one book and a cover PNG.
@@ -75,10 +77,14 @@ enum Fixtures {
         return url
     }
 
-    /// A one-page PDF with no embedded metadata, rendered via a CoreGraphics PDF context.
+    /// A one-page PDF with no embedded metadata. On Apple platforms it is
+    /// rendered via a CoreGraphics PDF context; on Linux a minimal hand-built
+    /// PDF (computed xref offsets) is written so the extractor's pdfinfo path
+    /// has something parseable and falls back to the filename title.
     static func makePDF(named name: String = "plain.pdf") throws -> URL {
         let url = FileManager.default.temporaryDirectory.appending(path: name)
         try? FileManager.default.removeItem(at: url)
+        #if canImport(CoreGraphics) && canImport(ImageIO)
         var mediaBox = CGRect(x: 0, y: 0, width: 300, height: 400)
         let context = CGContext(url as CFURL, mediaBox: &mediaBox, nil)!
         context.beginPDFPage(nil)
@@ -86,6 +92,30 @@ enum Fixtures {
         context.fill(mediaBox)
         context.endPDFPage()
         context.closePDF()
+        #else
+        // One blank page and no Info dictionary, so the filename fallback is
+        // exercised on Linux (pdfinfo/PDFKit both read it fine).
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Contents 4 0 R >>",
+            "<< /Length 0 >>\nstream\nendstream",
+        ]
+        var body = "%PDF-1.4\n"
+        var offsets: [Int] = []
+        for (index, object) in objects.enumerated() {
+            offsets.append(body.utf8.count)
+            body += "\(index + 1) 0 obj\n\(object)\nendobj\n"
+        }
+        let xrefStart = body.utf8.count
+        body += "xref\n0 \(objects.count + 1)\n"
+        body += "0000000000 65535 f \n"
+        for offset in offsets {
+            body += String(format: "%010d 00000 n \n", offset)
+        }
+        body += "trailer\n<< /Size \(objects.count + 1) /Root 1 0 R >>\nstartxref\n\(xrefStart)\n%%EOF\n"
+        try Data(body.utf8).write(to: url, options: .atomic)
+        #endif
         return url
     }
 
@@ -96,6 +126,7 @@ enum Fixtures {
     }
 
     static func jpeg1x1() throws -> Data {
+        #if canImport(CoreGraphics) && canImport(ImageIO)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let context = CGContext(
             data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
@@ -109,5 +140,14 @@ enum Fixtures {
         CGImageDestinationAddImage(destination, image, nil)
         CGImageDestinationFinalize(destination)
         return data as Data
+        #else
+        // Minimal JFIF 1x1 JPEG (SOI + APP0 + EOI). No ImageIO decoder exists
+        // on Linux, so the bytes are only carried through archives.
+        let bytes: [UInt8] = [
+            0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00,
+            0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9,
+        ]
+        return Data(bytes)
+        #endif
     }
 }

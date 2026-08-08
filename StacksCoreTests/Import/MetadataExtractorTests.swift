@@ -27,8 +27,16 @@ struct MetadataExtractorTests {
         #expect(metadata.comments == "Why generalists beat specialists.")
         #expect(metadata.publicationDate != nil)
 
+        #if canImport(ImageIO)
         let cover = try MetadataExtractor.extractCover(from: url, kind: .epub)
         #expect(cover != nil)
+        #else
+        // Linux has no ImageIO cover pipeline yet: cover extraction returns
+        // nil (a later task replaces it with a portable decoder), while the
+        // metadata assertions above still hold.
+        let cover = try MetadataExtractor.extractCover(from: url, kind: .epub)
+        #expect(cover == nil)
+        #endif
     }
 
     @Test
@@ -39,8 +47,14 @@ struct MetadataExtractorTests {
         #expect(metadata.title == "plain")
         #expect(metadata.authors.isEmpty)
 
+        #if canImport(PDFKit)
         let cover = try MetadataExtractor.extractCover(from: url, kind: .pdf)
         #expect(cover != nil)
+        #else
+        // PDF first-page rendering needs PDFKit (macOS-only); Linux returns nil.
+        let cover = try MetadataExtractor.extractCover(from: url, kind: .pdf)
+        #expect(cover == nil)
+        #endif
     }
 
     @Test

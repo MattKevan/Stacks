@@ -1,12 +1,14 @@
 // swift-tools-version: 6.0
 //
 // The Linux-port package: builds the server-facing subset of StacksCore with
-// plain `swift build` (macOS + Linux arm64/x86_64). Apple-only components
-// (MTP devices, ImageIO cover thumbnailing, Calibre and Enrichment client
-// features, Bonjour via Network.framework) are EXCLUDED — the server ingests
-// commands from clients and never runs those paths. The macOS app keeps
-// building the full core via XcodeGen; this package is the headless
-// `stacks` surface.
+// plain `swift build` (macOS + Linux arm64/x86_64). Apple-only components —
+// MTP devices (Devices), ImageIO cover thumbnailing (CoverThumbnailer.swift),
+// Enrichment, Vendored, and macOS sandbox bookmarking (Security) — are
+// EXCLUDED from the core target. Calibre, Import, MobiImport, and the server
+// compile on both platforms; the remaining Apple-only code (e.g. Bonjour)
+// stays in via `canImport` guards, and BonjourTests is excluded from the test
+// target. The macOS app keeps building the full core via XcodeGen; this
+// package is the headless `stacks` surface.
 import PackageDescription
 
 let package = Package(
