@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// OpenLibrary Book Search source (https://openlibrary.org/search.json) +
 /// Covers API. Identified requests (User-Agent) get a higher rate limit; the

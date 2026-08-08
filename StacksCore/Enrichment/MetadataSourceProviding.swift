@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// A metadata enrichment source (OpenLibrary, Google Books, …). New sources
 /// are drop-in registry registrations — no other code changes.

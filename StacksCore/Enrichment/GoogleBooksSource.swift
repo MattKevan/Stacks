@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Google Books volumes API source (https://developers.google.com/books).
 /// Field-scoped queries (isbn:/intitle:/inauthor:); covers come from

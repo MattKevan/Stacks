@@ -100,8 +100,11 @@ struct Enrich: AsyncParsableCommand {
             at: root, indexesDirectory: indexes, deviceID: UUID()
         )
 
+        // The same sweep the app runs (Library ▸ Fetch Missing Metadata):
+        // missing authors or tags, with all-"Unknown" placeholder authors
+        // counted as missing too.
         let books = try await repository.books()
-            .filter { $0.authors.isEmpty || $0.tags.isEmpty }
+            .filter { EnrichmentPolicy.needsEnrichment($0) }
         print("Enriching \(books.count) books missing authors/tags")
 
         // Mirror the app's lookup service construction (OpenLibrary, then
@@ -114,6 +117,7 @@ struct Enrich: AsyncParsableCommand {
         let service = MetadataLookupService(registry: registry)
 
         var applied = 0
+        var failed = 0
         for book in books {
             let query = MetadataLookupQuery(
                 isbn: book.identifiers["isbn"], title: book.title, authors: book.authors
@@ -125,6 +129,7 @@ struct Enrich: AsyncParsableCommand {
                 FileHandle.standardError.write(Data(
                     "  lookup failed: \(book.title) — \(error.localizedDescription)\n".utf8
                 ))
+                failed += 1
                 continue
             }
             guard let candidate = MetadataScoring.autoApply(
@@ -173,9 +178,15 @@ struct Enrich: AsyncParsableCommand {
                 FileHandle.standardError.write(Data(
                     "  update failed: \(book.title) — \(error.localizedDescription)\n".utf8
                 ))
+                failed += 1
             }
         }
         print("Applied: \(applied) of \(books.count)")
+        // Matches Import/ImportCalibre: any failed book is a non-zero exit.
+        // A lookup that simply finds nothing is not a failure.
+        if failed > 0 {
+            Foundation.exit(1)
+        }
     }
 }
 
