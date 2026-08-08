@@ -125,8 +125,10 @@ enum Fixtures {
         return Data(base64Encoded: base64)!
     }
 
+    /// Only used by `LibraryRepositoryTests` (excluded from the SwiftPM test
+    /// target), so it is compiled out entirely on Linux rather than stubbed.
+    #if canImport(CoreGraphics) && canImport(ImageIO)
     static func jpeg1x1() throws -> Data {
-        #if canImport(CoreGraphics) && canImport(ImageIO)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let context = CGContext(
             data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
@@ -140,14 +142,6 @@ enum Fixtures {
         CGImageDestinationAddImage(destination, image, nil)
         CGImageDestinationFinalize(destination)
         return data as Data
-        #else
-        // Minimal JFIF 1x1 JPEG (SOI + APP0 + EOI). No ImageIO decoder exists
-        // on Linux, so the bytes are only carried through archives.
-        let bytes: [UInt8] = [
-            0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00,
-            0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9,
-        ]
-        return Data(bytes)
-        #endif
     }
+    #endif
 }

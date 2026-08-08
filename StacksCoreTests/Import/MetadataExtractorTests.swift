@@ -63,4 +63,19 @@ struct MetadataExtractorTests {
         let metadata = try? MetadataExtractor.extract(from: url, kind: .djvu)
         #expect(metadata?.title == "My Book")
     }
+
+    #if !canImport(CoreGraphics) || !canImport(ImageIO)
+    /// The hand-built Linux PDF fixture must stay a parseable PDF: a broken
+    /// xref would silently turn the pdfinfo path into an untested filename
+    /// fallback (pdfFallsBackToFilenameWhenNoMetadata passes either way).
+    @Test
+    func linuxPdfFixtureIsStructurallyParseable() throws {
+        let url = try Fixtures.makePDF(named: "fixture-structure.pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let data = try Data(contentsOf: url)
+        let text = String(data: data, encoding: .utf8)
+        #expect(text?.hasPrefix("%PDF-") == true)
+        #expect(text?.contains("startxref") == true)
+    }
+    #endif
 }
