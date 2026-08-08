@@ -2,11 +2,10 @@ import AppKit
 import Foundation
 import StacksCore
 
-/// Toolbar sort order for the library browser (Finder-style).
-enum BrowserSortOrder: String, CaseIterable {
-    case name
-    case dateAdded
-}
+/// Toolbar sort order for the library browser (Finder-style). The core's
+/// cross-platform `BookSortOrder` (used by `BookBrowserModel`); the app alias
+/// keeps the browser surface source-compatible.
+typealias BrowserSortOrder = BookSortOrder
 
 /// The browser-facing surface of an open library OR a connected remote
 /// library. `LibraryConnection` (home) and `RemoteLibraryBrowser` conform;
