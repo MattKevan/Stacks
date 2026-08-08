@@ -40,7 +40,13 @@ targets:
     type: framework
     platform: macOS
     sources:
-      - StacksCore
+      - path: StacksCore
+        # Clibz is a SwiftPM-only system-library shim (module map + header for
+        # the Linux PNG decoder branch, which never compiles in the macOS app).
+        # Excluding it keeps xcodegen from generating a Headers build phase for
+        # shim.h.
+        excludes:
+          - Clibz
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mattkevan.StacksCore

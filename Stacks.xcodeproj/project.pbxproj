@@ -119,7 +119,6 @@
 		909277D5AACC2F90040BD14D /* CalibreLibraryScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F18D3F03F0446D22DDE330 /* CalibreLibraryScannerTests.swift */; };
 		93EF9E8B2FCD413FB592ECEE /* LibraryWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61625A94C7F07131F7D1D06 /* LibraryWelcomeView.swift */; };
 		943535EE2144A6EFEF9C3463 /* FacetNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2EF657A967D68607EE3DC7 /* FacetNavigation.swift */; };
-		95D45C9BBFF93A5D90419C0F /* shim.h in Headers */ = {isa = PBXBuildFile; fileRef = C0C870152F9979E21C2D8775 /* shim.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		9748F96B74BA77882813CB60 /* IndexedBook.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1EE100E37BB7A09580117C /* IndexedBook.swift */; };
 		9890E1BC1AF741861EBD3EF1 /* BookValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C28C7C03671EF56E4D547D /* BookValues.swift */; };
 		990C16040DE210F6650E3593 /* LibraryLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7018B3F34BEDEE3BAB6808B /* LibraryLayout.swift */; };
@@ -381,7 +380,6 @@
 		95D9A42E67C25C77775BADAD /* LocalCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCatalogTests.swift; sourceTree = "<group>"; };
 		966ECC9E0CBBD766372A09A5 /* LocalCatalogV3Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCatalogV3Tests.swift; sourceTree = "<group>"; };
 		977D2B06EA0436435AA4270C /* OpfGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpfGenerator.swift; sourceTree = "<group>"; };
-		97F88FEBE5C265AA35C4F5DF /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		9AD2E9C6568941324159DD47 /* LibrarySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySession.swift; sourceTree = "<group>"; };
 		9B1E90BAB5BAA49DC96FA752 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9CC95AAFD50B878FA36A64EE /* BookFolderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookFolderTests.swift; sourceTree = "<group>"; };
@@ -407,7 +405,6 @@
 		BE1052B17AA8F58BB0EFE443 /* StacksUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StacksUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEC682BCDB829C4E5A6929C7 /* MTPSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTPSession.swift; sourceTree = "<group>"; };
 		BFFC603DB26AA704CCFE1908 /* OPDSFeedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSFeedTests.swift; sourceTree = "<group>"; };
-		C0C870152F9979E21C2D8775 /* shim.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = shim.h; sourceTree = "<group>"; };
 		C48CC50F9AB6669BB909D5F6 /* MetadataLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataLookupService.swift; sourceTree = "<group>"; };
 		C854178AA769446A4F17080C /* MetadataRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataRegistry.swift; sourceTree = "<group>"; };
 		C86BEFE895851DA48B0C5888 /* OpenLibraryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenLibraryStoreTests.swift; sourceTree = "<group>"; };
@@ -538,15 +535,6 @@
 				8044C4B6FD0472F710B3F3DE /* MetadataSourceDecodingTests.swift */,
 			);
 			path = Enrichment;
-			sourceTree = "<group>";
-		};
-		1B1E3DFE00F40933B77798DA /* Clibz */ = {
-			isa = PBXGroup;
-			children = (
-				97F88FEBE5C265AA35C4F5DF /* module.modulemap */,
-				C0C870152F9979E21C2D8775 /* shim.h */,
-			);
-			path = Clibz;
 			sourceTree = "<group>";
 		};
 		26C82BD300AE796D7C7D7723 /* Devices */ = {
@@ -972,7 +960,6 @@
 			children = (
 				7626AD547AF15453F1ECDCC2 /* StacksCore.swift */,
 				A5D4876A9CD597096415AF79 /* Calibre */,
-				1B1E3DFE00F40933B77798DA /* Clibz */,
 				AB52757C9A510DDF662AE19C /* Devices */,
 				06A60CC97E50463AA009622E /* Enrichment */,
 				B4C1184AF5BFA2101939414C /* Images */,
@@ -1025,17 +1012,6 @@
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
-
-/* Begin PBXHeadersBuildPhase section */
-		71DE90ABF6C80D3724A8CB9D /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				95D45C9BBFF93A5D90419C0F /* shim.h in Headers */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
 		5EA255D49BFF3288D949A3D2 /* StacksServer */ = {
@@ -1123,7 +1099,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0F416B65006ED693D5C809AE /* Build configuration list for PBXNativeTarget "StacksCore" */;
 			buildPhases = (
-				71DE90ABF6C80D3724A8CB9D /* Headers */,
 				A76F2C6EFEDE43AC53073397 /* Sources */,
 				49214CE6C7EA8B05FADD3549 /* Resources */,
 				ACA1D1CF610110E37BBFFBCF /* Frameworks */,

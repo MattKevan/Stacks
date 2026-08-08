@@ -14,6 +14,12 @@ public enum CoverThumbnailer {
     /// side capped at `maxPixelSize` (aspect ratio preserved). Never decodes
     /// the full image; returns nil for a missing/unreadable file. Thread-safe
     /// (ImageIO) — safe to call from a background queue.
+    ///
+    /// Tradeoff vs a streamed decode: the file is read into memory via
+    /// `Data(contentsOf:)` before decoding, so peak memory is roughly the
+    /// compressed file size plus the small decoded thumbnail — fine for
+    /// typical covers (a few MB). A file that can't be read in full (truncated
+    /// or partial) is rejected outright and returns nil.
     public static func downsample(url: URL, maxPixelSize: CGFloat) -> CGImage? {
         // The decode itself is CoverDecoder's ImageIO branch (the same
         // thumbnail options the URL-based path used, on the file's bytes),
