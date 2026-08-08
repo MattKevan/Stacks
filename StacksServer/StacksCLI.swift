@@ -449,6 +449,10 @@ struct Browse: AsyncParsableCommand {
             let line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !line.isEmpty else { continue }
             let tokens = Self.tokenize(line)
+            // A quote-only line (e.g. `""` or a lone `"`) tokenizes to
+            // nothing — treat it like an empty line instead of indexing past
+            // the end of the array.
+            guard !tokens.isEmpty else { continue }
             let args = Array(tokens.dropFirst())
             switch tokens[0].lowercased() {
             case "list":
@@ -552,10 +556,7 @@ struct Browse: AsyncParsableCommand {
             Self.stderr("Usage: show <id>")
             return
         }
-        guard let book = await resolveBookID(input, remote: remote) else {
-            Self.stderr("No book with id \(input)")
-            return
-        }
+        guard let book = await resolveBookID(input, remote: remote) else { return }
         print("ID: \(book.id.uuidString)")
         print("Title: \(book.title)")
         print("Authors: \(book.authors.isEmpty ? "Unknown" : book.authors.joined(separator: ", "))")
@@ -599,10 +600,7 @@ struct Browse: AsyncParsableCommand {
             Self.stderr("Usage: open <id>")
             return
         }
-        guard let book = await resolveBookID(input, remote: remote) else {
-            Self.stderr("No book with id \(input)")
-            return
-        }
+        guard let book = await resolveBookID(input, remote: remote) else { return }
         guard let format = book.formats.first else {
             Self.stderr("\(book.title) has no downloadable formats")
             return
@@ -610,6 +608,9 @@ struct Browse: AsyncParsableCommand {
         do {
             let url = try await remote.downloadFormat(id: book.id, format: format.kind.lowercased())
             try Self.openFile(url)
+            // The temp download directory is now empty; drop it (same cleanup
+            // as `download`).
+            try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
             print("Opening \(book.title) (\(format.kind))")
         } catch {
             Self.stderr("open failed for \(book.title): \(Self.describe(error))")
@@ -623,10 +624,7 @@ struct Browse: AsyncParsableCommand {
             Self.stderr("Usage: download <id> [dir]")
             return
         }
-        guard let book = await resolveBookID(input, remote: remote) else {
-            Self.stderr("No book with id \(input)")
-            return
-        }
+        guard let book = await resolveBookID(input, remote: remote) else { return }
         guard let format = book.formats.first else {
             Self.stderr("\(book.title) has no downloadable formats")
             return
@@ -743,17 +741,32 @@ struct Browse: AsyncParsableCommand {
 
     // MARK: - Helpers
 
-    /// Resolves a full UUID or an unambiguous id prefix (as printed by
-    /// `list`) to a book.
+    /// Resolves a full UUID or an id prefix (as printed by `list`) to a book.
+    /// Reports to stderr — and returns nil — when nothing matches or several
+    /// books share the prefix (never silently act on the wrong book).
     private func resolveBookID(_ input: String, remote: RemoteLibrary) async -> IndexedBook? {
         if let uuid = UUID(uuidString: input) {
-            return await remote.book(id: uuid)
-        }
-        let needle = input.lowercased()
-        for book in await remote.books() where book.id.uuidString.lowercased().hasPrefix(needle) {
+            guard let book = await remote.book(id: uuid) else {
+                Self.stderr("No book with id \(input)")
+                return nil
+            }
             return book
         }
-        return nil
+        let needle = input.lowercased()
+        let matches = await remote.books()
+            .filter { $0.id.uuidString.lowercased().hasPrefix(needle) }
+        switch matches.count {
+        case 1:
+            return matches[0]
+        case 0:
+            Self.stderr("No book with id \(input)")
+            return nil
+        default:
+            Self.stderr(
+                "Ambiguous id '\(input)' — \(matches.count) books match; use a longer prefix or the full id"
+            )
+            return nil
+        }
     }
 
     /// Splits a command line into tokens, honoring double-quoted segments so
