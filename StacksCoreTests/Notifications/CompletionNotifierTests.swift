@@ -14,6 +14,7 @@ import Testing
 /// so its assertion is equally weak: it completes and reports a Bool).
 @Suite
 struct CompletionNotifierTests {
+#if canImport(UserNotifications)
     @Test
     func postForwardsToPosterAndReportsVerdict() async {
         let result = await CompletionNotifier.post(title: "Stacks test", body: "Test notification") { title, body in
@@ -23,6 +24,7 @@ struct CompletionNotifierTests {
         }
         #expect(result == false)
     }
+#endif
 
 #if !canImport(UserNotifications)
     @Test
