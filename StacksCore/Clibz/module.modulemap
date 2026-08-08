@@ -1,0 +1,5 @@
+module Clibz [system] {
+    header "shim.h"
+    link "z"
+    export *
+}

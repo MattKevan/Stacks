@@ -28,6 +28,17 @@ let package = Package(
         .package(url: "https://github.com/awxkee/libmobi-swift.git", exact: "1.0.2"),
     ],
     targets: [
+        // Minimal module map exposing the system zlib: the Linux cover decoder
+        // (CoverDecoder.swift) inflates/deflates PNG IDAT streams through it.
+        // libmobi already links zlib, so no extra system dependency on either
+        // platform (macOS: SDK libz; Linux: the zlib dev package the server
+        // build already requires).
+        .systemLibrary(
+            name: "Clibz",
+            path: "StacksCore/Clibz",
+            pkgConfig: "zlib",
+            providers: [.apt(["zlib1g-dev"]), .brew(["zlib"])]
+        ),
         .target(
             name: "StacksCore",
             dependencies: [
@@ -37,6 +48,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "libmobi", package: "libmobi-swift"),
+                .target(name: "Clibz"),
             ],
             path: "StacksCore",
             // Apple-only / client-only code the headless server never runs.
@@ -47,6 +59,8 @@ let package = Package(
                 // macOS sandbox bookmarking (security-scoped URLs); the
                 // headless server opens libraries by path argument.
                 "Security",
+                // The Clibz system library target's module map + shim header.
+                "Clibz",
             ]
         ),
         .executableTarget(
