@@ -67,18 +67,18 @@ public enum MobiToEpubConverter {
 
     private static func opfData(content: MobiContent) -> Data {
         let uid = stableID(content)
-        let creators = content.authors
+        let creators: String = content.authors
             .map { "<dc:creator opf:role=\"aut\">\(escaped($0))</dc:creator>" }
             .joined()
-        let subjects = content.subjects
+        let subjects: String = content.subjects
             .map { "<dc:subject>\(escaped($0))</dc:subject>" }
             .joined()
-        let manifestChapters = content.chapters
+        let manifestChapters: String = content.chapters
             .map { chapter in
                 "<item id=\"\(chapter.id)\" href=\"\(chapter.id).xhtml\" media-type=\"application/xhtml+xml\"/>"
             }
             .joined(separator: "\n")
-        let spineChapters = content.chapters
+        let spineChapters: String = content.chapters
             .map { "<itemref idref=\"\($0.id)\"/>" }
             .joined()
         let coverItem = content.cover == nil
@@ -108,7 +108,12 @@ public enum MobiToEpubConverter {
 
     private static func ncxData(content: MobiContent) -> Data {
         let uid = stableID(content)
-        let navPoints = content.chapters.enumerated()
+        // Explicit `: String` pins the join to `Sequence.joined(separator:)`
+        // so the NCX is built as plain text. Defensive disambiguation: if
+        // GRDB's `Collection.joined(separator:) -> SQL` overload is ever
+        // visible in this file (whole-module compilation), the joined value
+        // must still resolve to a Foundation String.
+        let navPoints: String = content.chapters.enumerated()
             .map { index, chapter in
                 let title = escaped(chapter.title ?? "Chapter \(index + 1)")
                 return """
