@@ -61,4 +61,33 @@ struct CoverDecoderTests {
         let truncated = Data(Self.coverPNG.prefix(14))
         #expect(CoverDecoder.decode(data: truncated, maxPixelSize: 64) == nil)
     }
+
+    @Test
+    func decodeRejectsOversizedDimensions() {
+        // A valid PNG signature + IHDR claiming 20000x20000 (400MP) with no
+        // IDAT. The portable decoder must reject it from the header alone —
+        // nil, never a multi-gigabyte buffer allocation (OOM guard for
+        // untrusted cover data on the headless server).
+        func be32(_ value: Int) -> [UInt8] {
+            [
+                UInt8((value >> 24) & 0xFF),
+                UInt8((value >> 16) & 0xFF),
+                UInt8((value >> 8) & 0xFF),
+                UInt8(value & 0xFF),
+            ]
+        }
+        var ihdr = Data()
+        ihdr.append(contentsOf: be32(20_000))
+        ihdr.append(contentsOf: be32(20_000))
+        ihdr.append(contentsOf: [8, 2, 0, 0, 0]) // 8-bit RGB, deflate, adaptive, non-interlaced
+        var png = Data()
+        png.append(contentsOf: [137, 80, 78, 71, 13, 10, 26, 10])
+        png.append(contentsOf: be32(13))
+        png.append(contentsOf: Array("IHDR".utf8))
+        png.append(ihdr)
+        png.append(contentsOf: be32(0)) // bogus CRC — never reached
+        png.append(contentsOf: be32(0))
+        png.append(contentsOf: Array("IEND".utf8))
+        #expect(CoverDecoder.decode(data: png, maxPixelSize: 64) == nil)
+    }
 }

@@ -147,6 +147,13 @@ public enum CoverDecoder {
             case "IEND":
                 guard sawIHDR, let (channels, bytesPerSample) = layout(colorType: colorType, bitDepth: bitDepth),
                       width > 0, height > 0, width < 1 << 24, height < 1 << 24 else { return nil }
+                // Reject oversized images BEFORE any buffer allocation: the
+                // decode materializes full scanline + RGBA buffers first and
+                // downscales after, so a crafted header must not be able to
+                // demand gigabytes. Covers never approach 40MP — anything
+                // larger is rejected as undecodable rather than crashing the
+                // headless server on untrusted import data.
+                guard width * height <= 40_000_000 else { return nil }
                 // Scanline size in bytes — ceil() handles sub-byte bit depths
                 // (e.g. 8 1-bit gray pixels = 1 byte per row).
                 let stride = (width * channels * bitDepth + 7) / 8
