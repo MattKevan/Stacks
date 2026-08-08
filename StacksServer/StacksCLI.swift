@@ -2,13 +2,13 @@ import ArgumentParser
 import Foundation
 import StacksCore
 
-/// The headless library server CLI — `stacks create|serve|status|import-calibre`.
+/// The headless library server CLI — `stacks create|import|serve|status|import-calibre`.
 @main
 struct StacksCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "stacks",
         abstract: "Create, serve, and inspect Stacks libraries.",
-        subcommands: [Create.self, ImportCalibre.self, Serve.self, Status.self]
+        subcommands: [Create.self, ImportCalibre.self, Import.self, Serve.self, Status.self]
     )
 }
 
@@ -30,6 +30,35 @@ func serverIndexesDirectory(libraryPath: String? = nil) throws -> URL {
             .appending(path: ".stacks-server-indexes", directoryHint: .isDirectory)
     }
     return URL(fileURLWithPath: ".stacks-server-indexes")
+}
+
+/// Resolves a library target into an open repository, creating the library
+/// when the path is absent or an empty folder was pre-made (`mkdir` then
+/// import is a natural workflow). A non-empty folder that is not already a
+/// Stacks library is refused — never write a skeleton into user files.
+private func openOrCreateLibrary(
+    at root: URL,
+    indexesDirectory: URL
+) async throws -> LibraryRepository {
+    let layout = LibraryLayout(root: root)
+    let manifestExists = FileManager.default.fileExists(atPath: layout.manifestURL.path)
+    if !manifestExists {
+        let exists = FileManager.default.fileExists(atPath: root.path)
+        if exists {
+            let contents = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
+            guard contents.isEmpty else {
+                throw ValidationError(
+                    "\(root.path) is not an empty folder or a Stacks library."
+                )
+            }
+        }
+        _ = try await LibraryRepository.create(
+            at: root, indexesDirectory: indexesDirectory, deviceID: UUID()
+        )
+    }
+    return try await LibraryRepository.open(
+        at: root, indexesDirectory: indexesDirectory, deviceID: UUID()
+    )
 }
 
 struct Create: AsyncParsableCommand {
@@ -84,28 +113,8 @@ struct ImportCalibre: AsyncParsableCommand {
             indexesDirectory = try serverIndexesDirectory(libraryPath: targetPath)
         }
         let root = URL(fileURLWithPath: targetPath)
-        let layout = LibraryLayout(root: root)
-        let manifestExists = FileManager.default.fileExists(atPath: layout.manifestURL.path)
-        if !manifestExists {
-            // Fresh target: create the library when the path is absent or an
-            // empty folder was pre-made (`mkdir` then import is a natural
-            // workflow). A non-empty folder that is not already a Stacks
-            // library is refused — never write a skeleton into user files.
-            let exists = FileManager.default.fileExists(atPath: root.path)
-            if exists {
-                let contents = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
-                guard contents.isEmpty else {
-                    throw ValidationError(
-                        "\(targetPath) is not an empty folder or a Stacks library."
-                    )
-                }
-            }
-            _ = try await LibraryRepository.create(
-                at: root, indexesDirectory: indexesDirectory, deviceID: UUID()
-            )
-        }
-        let repository = try await LibraryRepository.open(
-            at: root, indexesDirectory: indexesDirectory, deviceID: UUID()
+        let repository = try await openOrCreateLibrary(
+            at: root, indexesDirectory: indexesDirectory
         )
 
         let sourceName = URL(fileURLWithPath: calibrePath)
@@ -151,6 +160,44 @@ struct ImportCalibre: AsyncParsableCommand {
             + "Failed: \(report.failed.count)  Skipped: \(report.skipped.count)")
         for title in failedTitles {
             FileHandle.standardError.write(Data("  failed: \(title)\n".utf8))
+        }
+        if !report.failed.isEmpty {
+            Foundation.exit(1)
+        }
+    }
+}
+
+struct Import: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Import book files (EPUB/PDF/DJVU/MOBI) into a library."
+    )
+
+    @Argument(help: "Path to the library (created if missing)")
+    var libraryPath: String
+
+    @Argument(parsing: .remaining, help: "Book files to import")
+    var files: [String]
+
+    func run() async throws {
+        let root = URL(fileURLWithPath: libraryPath)
+        let indexesDirectory = try serverIndexesDirectory(libraryPath: libraryPath)
+        let repository = try await openOrCreateLibrary(
+            at: root, indexesDirectory: indexesDirectory
+        )
+
+        let service = ImportService(layout: LibraryLayout(root: root))
+        let report = try await service.importFiles(
+            files.map { URL(fileURLWithPath: $0) },
+            into: repository
+        )
+
+        print("Imported: \(report.imported.count)  Duplicates: \(report.duplicates.count)  "
+            + "Failed: \(report.failed.count)")
+        for item in report.failed {
+            guard case .failed(let message) = item.status else { continue }
+            FileHandle.standardError.write(Data(
+                "  failed: \(item.sourceURL.path) — \(message)\n".utf8
+            ))
         }
         if !report.failed.isEmpty {
             Foundation.exit(1)
