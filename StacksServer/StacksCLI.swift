@@ -2,13 +2,13 @@ import ArgumentParser
 import Foundation
 import StacksCore
 
-/// The headless library server CLI — `stacks create|enrich|import-calibre|import|serve|status|browse`.
+/// The headless library server CLI — `stacks create|enrich|import-calibre|import|serve|status|browse|list|search`.
 @main
 struct StacksCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "stacks",
         abstract: "Create, serve, browse, and inspect Stacks libraries.",
-        subcommands: [Create.self, Enrich.self, ImportCalibre.self, Import.self, Serve.self, Status.self, Browse.self]
+        subcommands: [Create.self, Enrich.self, ImportCalibre.self, Import.self, Serve.self, Status.self, Browse.self, List.self, Search.self]
     )
 }
 
