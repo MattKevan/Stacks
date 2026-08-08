@@ -179,4 +179,54 @@ struct BookBrowserModelTests {
         let result = model.books(from: books)
         #expect(result.map(\.title) == ["Newest", "Middle", "Oldest"])
     }
+
+    @Test
+    func dateAddedSortPlacesNilTimestampsLast() {
+        var model = BookBrowserModel()
+        model.sortOrder = .dateAdded
+        let books = [
+            makeBook(title: "No Date", addedMilliseconds: nil),
+            makeBook(title: "Oldest", addedMilliseconds: 1_000),
+            makeBook(title: "Newest", addedMilliseconds: 2_000),
+        ]
+
+        let result = model.books(from: books)
+        #expect(result.map(\.title) == ["Newest", "Oldest", "No Date"])
+    }
+
+    // MARK: - Facet / search interaction
+
+    @Test
+    func activeFacetTakesPrecedenceOverSearchText() {
+        var model = BookBrowserModel()
+        model.searchText = "alpha"
+        model.facetNavigation.selectCategory(.tag)
+        model.facetNavigation.selectValue("cooking")
+        let books = [
+            makeBook(title: "Alpha", tags: ["sci-fi"]),
+            makeBook(title: "Beta", tags: ["cooking"]),
+        ]
+
+        // The facet filter wins; the search text would match "Alpha" but is
+        // ignored while a facet is active.
+        let result = model.books(from: books)
+        #expect(result.map(\.title) == ["Beta"])
+    }
+
+    @Test
+    func emptyFacetValueMatchesNothing() {
+        var model = BookBrowserModel()
+        model.facetNavigation.selectCategory(.tag)
+        model.facetNavigation.selectValue("")
+        let books = [
+            makeBook(title: "Alpha", tags: ["sci-fi"]),
+            makeBook(title: "Beta", tags: ["cooking"]),
+        ]
+
+        // `selectValue("")` still forms an active facet with an empty value,
+        // and no book carries an empty tag — the filter matches nothing.
+        #expect(model.facetNavigation.activeFacet != nil)
+        let result = model.books(from: books)
+        #expect(result.isEmpty)
+    }
 }
