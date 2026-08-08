@@ -3,8 +3,8 @@
 // The Linux-port package: builds the server-facing subset of StacksCore with
 // plain `swift build` (macOS + Linux arm64/x86_64). Apple-only components —
 // MTP devices (Devices), ImageIO cover thumbnailing (CoverThumbnailer.swift),
-// Enrichment, Vendored, and macOS sandbox bookmarking (Security) — are
-// EXCLUDED from the core target. Calibre, Import, MobiImport, and the server
+// Vendored, and macOS sandbox bookmarking (Security) — are EXCLUDED from the
+// core target. Calibre, Enrichment, Import, MobiImport, and the server
 // compile on both platforms; the remaining Apple-only code (e.g. Bonjour)
 // stays in via `canImport` guards, and BonjourTests is excluded from the test
 // target. The macOS app keeps building the full core via XcodeGen; this
@@ -41,7 +41,6 @@ let package = Package(
             path: "StacksCore",
             // Apple-only / client-only code the headless server never runs.
             exclude: [
-                "Enrichment",
                 "Devices",
                 "Vendored",
                 "Library/CoverThumbnailer.swift",
@@ -70,10 +69,9 @@ let package = Package(
             ],
             path: "StacksCoreTests",
             // Mirrors the core target's excludes: tests referencing excluded
-            // client features (Calibre/Enrichment/Devices) and macOS-only
-            // surfaces (BonjourTests uses Network.framework).
+            // client features (Devices) and macOS-only surfaces (BonjourTests
+            // uses Network.framework).
             exclude: [
-                "Enrichment",
                 "Devices",
                 "Security",
                 "Selection",

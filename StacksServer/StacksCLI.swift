@@ -2,13 +2,13 @@ import ArgumentParser
 import Foundation
 import StacksCore
 
-/// The headless library server CLI — `stacks create|import-calibre|import|serve|status`.
+/// The headless library server CLI — `stacks create|enrich|import-calibre|import|serve|status`.
 @main
 struct StacksCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "stacks",
         abstract: "Create, serve, and inspect Stacks libraries.",
-        subcommands: [Create.self, ImportCalibre.self, Import.self, Serve.self, Status.self]
+        subcommands: [Create.self, Enrich.self, ImportCalibre.self, Import.self, Serve.self, Status.self]
     )
 }
 
@@ -82,6 +82,100 @@ struct Create: AsyncParsableCommand {
         print("Created library at \(root.path)")
         print("Library ID: \(repository.manifest.id)")
         print("Format version: \(repository.manifest.formatVersion)")
+    }
+}
+
+struct Enrich: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Fetch metadata for books missing authors or tags."
+    )
+
+    @Argument(help: "Path to the library directory")
+    var libraryPath: String
+
+    func run() async throws {
+        let root = URL(fileURLWithPath: libraryPath)
+        let indexes = try serverIndexesDirectory(libraryPath: libraryPath)
+        let repository = try await LibraryRepository.open(
+            at: root, indexesDirectory: indexes, deviceID: UUID()
+        )
+
+        let books = try await repository.books()
+            .filter { $0.authors.isEmpty || $0.tags.isEmpty }
+        print("Enriching \(books.count) books missing authors/tags")
+
+        // Mirror the app's lookup service construction (OpenLibrary, then
+        // Google Books) so the headless path behaves like the app.
+        let client = URLSessionMetadataHTTPClient()
+        let registry = MetadataRegistry(sources: [
+            OpenLibrarySource(client: client, userAgent: "Stacks/1.0"),
+            GoogleBooksSource(client: client, userAgent: "Stacks/1.0"),
+        ])
+        let service = MetadataLookupService(registry: registry)
+
+        var applied = 0
+        for book in books {
+            let query = MetadataLookupQuery(
+                isbn: book.identifiers["isbn"], title: book.title, authors: book.authors
+            )
+            let result: MetadataLookupResult
+            do {
+                result = try await service.lookup(query)
+            } catch {
+                FileHandle.standardError.write(Data(
+                    "  lookup failed: \(book.title) — \(error.localizedDescription)\n".utf8
+                ))
+                continue
+            }
+            guard let candidate = MetadataScoring.autoApply(
+                from: MetadataScoring.ranked(result.candidates, for: query),
+                for: query
+            ) else {
+                // Nothing found, or the top result isn't confident enough for
+                // auto-apply (see MetadataScoring.autoApply) — leave the book
+                // untouched.
+                continue
+            }
+
+            // Fill only the fields the book is missing — existing values are
+            // never clobbered (same semantics as the app's apply path). The
+            // metadata sources don't supply tags, so authors and the other
+            // empty fields are what a candidate can fill.
+            var edit = BookEdit()
+            var fillsSomething = false
+            if book.title.isEmpty, !candidate.title.isEmpty {
+                edit.title = candidate.title
+                fillsSomething = true
+            }
+            if book.authors.isEmpty, !candidate.authors.isEmpty {
+                edit.authors = candidate.authors
+                fillsSomething = true
+            }
+            if book.publisher == nil, let publisher = candidate.publisher, !publisher.isEmpty {
+                edit.publisher = .set(publisher)
+                fillsSomething = true
+            }
+            if book.publicationDate == nil, let date = candidate.publicationDate {
+                edit.publicationDate = .set(date)
+                fillsSomething = true
+            }
+            if book.identifiers["isbn"] == nil, let isbn = candidate.isbn {
+                edit.identifiers = book.identifiers.merging(["isbn": isbn]) { _, new in new }
+                fillsSomething = true
+            }
+            guard fillsSomething else { continue }
+
+            do {
+                _ = try await repository.updateBook(id: book.id, edit: edit)
+                applied += 1
+                print("  ✓ \(book.title)")
+            } catch {
+                FileHandle.standardError.write(Data(
+                    "  update failed: \(book.title) — \(error.localizedDescription)\n".utf8
+                ))
+            }
+        }
+        print("Applied: \(applied) of \(books.count)")
     }
 }
 

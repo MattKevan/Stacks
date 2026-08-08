@@ -4,7 +4,10 @@ import Testing
 
 /// Pins `URLSessionMetadataHTTPClient`'s timeout/retry contract via a stubbed
 /// URLProtocol (the HTTP path was previously exercised by no test at all).
-@Suite
+/// Serialized: the stub's handler/callCount are process-wide statics, so
+/// Swift Testing's parallel test execution would make the tests clobber each
+/// other (one test's 300 ms retry window is another test's handler swap).
+@Suite(.serialized)
 struct MetadataHTTPClientTests {
     private final class StubURLProtocol: URLProtocol {
         /// The handler the next load runs. `nonisolated(unsafe)`: URL loading
