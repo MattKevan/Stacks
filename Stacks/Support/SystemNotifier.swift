@@ -1,66 +1,18 @@
 import StacksCore
 import Foundation
-import UserNotifications
-
-/// Presents banners while the app is frontmost (macOS suppresses foreground
-/// notifications by default). Retained for the process by `shared`; assigned
-/// to the notification center before every post (idempotent).
-final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
-    static let shared = NotificationDelegate()
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        completionHandler([.banner, .sound])
-    }
-}
 
 /// Posts completion feedback as standard macOS system notifications.
 /// Authorization is requested lazily on first use; every post returns false
 /// when notifications are not authorized so callers can fall back to their
-/// existing report sheet.
+/// existing report sheet. The UNUserNotificationCenter machinery lives in
+/// `CompletionNotifier` (StacksCore) so the same feedback path can run on
+/// Linux via notify-send.
 enum SystemNotifier {
-    /// Resolves notification authorization; true when notifications can be
-    /// posted (authorized / provisional / ephemeral). Idempotent after the
-    /// first call; never throws.
-    static func requestAuthorizationIfNeeded() async -> Bool {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        switch settings.authorizationStatus {
-        case .authorized, .provisional, .ephemeral:
-            return true
-        case .notDetermined:
-            return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
-        case .denied:
-            return false
-        @unknown default:
-            return false
-        }
-    }
-
     /// Posts a notification; returns false when authorization is missing or
     /// posting failed (caller falls back to a sheet).
     @discardableResult
     static func post(title: String, body: String) async -> Bool {
-        guard await requestAuthorizationIfNeeded() else { return false }
-        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = .default
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
-        )
-        do {
-            try await UNUserNotificationCenter.current().add(request)
-            return true
-        } catch {
-            return false
-        }
+        await CompletionNotifier.post(title: title, body: body)
     }
 
     /// "Import complete" summary with the failed items listed (truncated).
