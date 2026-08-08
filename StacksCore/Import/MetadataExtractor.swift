@@ -187,35 +187,46 @@ public enum MetadataExtractor {
         } catch {
             return nil
         }
+        // Drain stdout before waiting: readDataToEndOfFile blocks until the
+        // child closes the pipe, so a large Info dictionary can't wedge the
+        // write end and stall the import.
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         guard process.terminationStatus == 0 else { return nil }
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: outputData, encoding: .utf8) else { return nil }
+        return metadata(fromPdfinfoOutput: output, url: url)
+    }
+#endif
 
+    /// Parses `pdfinfo` stdout into metadata, mirroring the PDFKit branch's
+    /// field mapping. The title falls back to the filename when the Info
+    /// dictionary has none.
+    static func metadata(fromPdfinfoOutput output: String, url: URL) -> ExtractedMetadata {
         var title: String?
         var author: String?
+        var subject: String?
         var keywords: String?
         for line in output.split(separator: "\n") {
             guard let colon = line.firstIndex(of: ":") else { continue }
             let key = line[..<colon].trimmingCharacters(in: .whitespaces)
-            guard key == "Title" || key == "Author" || key == "Keywords" else { continue }
+            guard key == "Title" || key == "Author" || key == "Subject" || key == "Keywords" else { continue }
             let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
             guard !value.isEmpty else { continue }
             switch key {
             case "Title": title = value
             case "Author": author = value
+            case "Subject": subject = value
             case "Keywords": keywords = value
             default: break
             }
         }
-
         return ExtractedMetadata(
             title: title ?? url.deletingPathExtension().lastPathComponent,
             authors: author.map { [$0] } ?? [],
-            tags: keywords.map { [$0] } ?? []
+            tags: keywords.map { [$0] } ?? [],
+            comments: subject
         )
     }
-#endif
 
     // MARK: - DJVU and fallback
 
