@@ -69,6 +69,7 @@
 		474A7030192F197DFBD1D16A /* JournalIngestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BDCB50DCFA6F1CF7358C68D /* JournalIngestTests.swift */; };
 		48EAA7CB1D7FD35B823FCE56 /* CompletionNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F116BCFBC3A738D21C8266D7 /* CompletionNotifierTests.swift */; };
 		499F6A577839EBC4A33827EF /* StacksCLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C0770BB7CB91533943A3EC /* StacksCLI.swift */; };
+		FC8D916AF6B194C1D7B47AD7 /* Browse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 498606265F08B2DF0D9DA0D0 /* Browse.swift */; };
 		49A2AD7A9CE8BEC9108F11FD /* BookFolderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC95AAFD50B878FA36A64EE /* BookFolderTests.swift */; };
 		49D5A6C093B4701AC19B358A /* SendPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79BD565395D1B1FD5712C0AB /* SendPlan.swift */; };
 		4AC99737481BF8445BC87FB5 /* MTPCodes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF095A91359CD62AFFBB0DC6 /* MTPCodes.swift */; };
@@ -282,6 +283,7 @@
 		100737ED605340721B0DE098 /* DeviceServicesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceServicesTests.swift; sourceTree = "<group>"; };
 		119B68CC9B0AC1BFA5330497 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		12C0770BB7CB91533943A3EC /* StacksCLI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StacksCLI.swift; sourceTree = "<group>"; };
+		498606265F08B2DF0D9DA0D0 /* Browse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Browse.swift; sourceTree = "<group>"; };
 		15167DA711CC417585EE880E /* DeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
 		163E22FEF42F161F699FABE8 /* OpenLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenLibraryStore.swift; sourceTree = "<group>"; };
 		17CFB7EE9BD7D87261A2F471 /* ImportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportServiceTests.swift; sourceTree = "<group>"; };
@@ -525,6 +527,7 @@
 			isa = PBXGroup;
 			children = (
 				12C0770BB7CB91533943A3EC /* StacksCLI.swift */,
+				498606265F08B2DF0D9DA0D0 /* Browse.swift */,
 			);
 			path = StacksServer;
 			sourceTree = "<group>";
@@ -1349,6 +1352,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				499F6A577839EBC4A33827EF /* StacksCLI.swift in Sources */,
+				FC8D916AF6B194C1D7B47AD7 /* Browse.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
