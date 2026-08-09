@@ -16,6 +16,9 @@ struct List: AsyncParsableCommand {
     @Option(name: .long, help: "Sort order: name or date (default: name)")
     var sort: String = "name"
 
+    @Option(name: .long, help: "Only books with this author (exact match)")
+    var author: String?
+
     func run() async throws {
         let root = URL(fileURLWithPath: libraryPath)
         let indexes = try serverIndexesDirectory(libraryPath: libraryPath)
@@ -24,6 +27,14 @@ struct List: AsyncParsableCommand {
         )
         var model = BookBrowserModel()
         model.sortOrder = try Self.sortOrder(for: sort)
+        if let author {
+            // Facet filtering takes precedence over search text in the model
+            // (list has no search), so the author facet is the only filter —
+            // same handling as the browse REPL's `list --author`.
+            model.facetNavigation.clear()
+            model.facetNavigation.selectCategory(.author)
+            model.facetNavigation.selectValue(author)
+        }
         for book in model.books(from: try await repository.books()) {
             print(QueryListing.line(for: book))
         }
