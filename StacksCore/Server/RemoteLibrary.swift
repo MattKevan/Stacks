@@ -42,6 +42,17 @@ public actor RemoteLibrary {
     public enum RemoteError: Error, Equatable {
         case unreachable
         case serverError(Int)
+
+        /// Human-readable failure text — without this, callers only ever see
+        /// the opaque "(RemoteError error N.)" and the HTTP status is hidden.
+        public var localizedDescription: String {
+            switch self {
+            case .unreachable:
+                return "server unreachable"
+            case .serverError(let status):
+                return "server error (\(status))"
+            }
+        }
     }
 
     private let baseURL: URL
