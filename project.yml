@@ -1,6 +1,6 @@
 name: Stacks
 options:
-  bundleIdPrefix: com.mattkevan
+  bundleIdPrefix: com.new-industries
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
@@ -49,7 +49,7 @@ targets:
           - Clibz
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mattkevan.StacksCore
+        PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.StacksCore
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - package: GRDB
@@ -67,7 +67,7 @@ targets:
       - Stacks
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mattkevan.Stacks
+        PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.Stacks
         PRODUCT_NAME: Stacks
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_ENTITLEMENTS: Config/Stacks.entitlements
@@ -135,7 +135,7 @@ targets:
       - StacksServer
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mattkevan.StacksServer
+        PRODUCT_BUNDLE_IDENTIFIER: com.new-industriestkevan.StacksServer
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: StacksCore
