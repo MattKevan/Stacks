@@ -1,47 +1,18 @@
 # Stacks
 
-Stacks is a native macOS ebook-library manager with a headless server, all in
-one Swift codebase. A library is a portable folder owned by a single writer
-(the server); the macOS app opens one library per instance, imports and edits
-books, and connects to libraries shared over the local network — including
-the same app's Sharing pane and headless servers on Linux.
+Stacks is an open source Mac-native ebook manager with a Mac/Linux headless server, all in
+the same Swift codebase. Features include:
 
-- Portable libraries: an append-only operation journal (`.bookmanager/…`)
-  plus periodic atomic snapshots — no merge logic, crash-safe, idempotent by
-  command id
-- Local browsing: search and facets (author/series/tag/format), cover grid
-  and table, metadata editor, trash/restore, external open, diagnostics
-- Import: EPUB/PDF/DJVU with embedded metadata, plus a resumable Calibre
-  migration wizard (copies a Calibre library read-only, full metadata)
-- Metadata enrichment: auto-fetch missing authors/tags from online sources
-- Device support: Kindle Paperwhite over native MTP (unsandboxed — USB device
-  access fails under App Sandbox, so the app is Developer-ID signed, not
-  Mac App Store–distributable)
-- Sharing: in-app server (Settings → Sharing) advertising `_stacks._tcp`
-  over Bonjour; optional username/password (Keychain)
-- Remote browsing: the Shared sidebar discovers servers on the LAN (Bonjour,
-  or Avahi on Linux) and also connects by typed host:port; offline edits
-  queue durably and flush on reconnect
-- Headless server: `stacks` CLI (`create`, `import-calibre`, `serve`,
-  `status`) — sync protocol + OPDS 1.2 over HTTP, single writer per library
+- Store and search EPUB/PDF/DJVU/MOBI books by keyword author, series, tag and format.
+- Fetch missing metadata and covers.
+- Share libraries over a local network, with automatic Bonjour/avahi discovery.
+- Import existing Calibre libraries.
+- Manage books on connected e-readers.
+- Headless server and CLI for library sharing.
 
-## Architecture
+## E-reader support
 
-A library is a folder with a `.bookmanager` control directory: an
-append-only JSON-lines operation journal, periodic snapshots, and staging for
-incoming files. Clients never merge — the server appends commands in order
-and clients pull records after a cursor, applying them through
-`CommandReplay`. One server per library is the only writer; a recreated or
-second writer is a hard break (format version 2, no migration from the old
-format). SQLite catalogs are disposable indexes, never part of the portable
-format.
-
-- `StacksCore/Journal` — journal, snapshots, `CommandReplay` (single source
-  of truth for command → state)
-- `StacksCore/Server` — `LibraryServer` (Hummingbird), `RemoteLibrary`
-  client, offline queue, Bonjour/Avahi advertisers, OPDS feeds
-- `Stacks` — the macOS app (XcodeGen project from `project.yml`)
-- `StacksServer` — the `stacks` CLI
+So far this has only been tested with a Kindle Paperwhite 2024+.
 
 ## Requirements
 
@@ -50,7 +21,7 @@ format.
 - Swift 6.x from [swift.org](https://www.swift.org/install/linux/) for the
   Linux server (see [LINUX_SERVER.md](LINUX_SERVER.md))
 
-## Build and run — macOS app
+## Build and run - macOS app
 
 ```bash
 xcodegen generate          # regenerates Stacks.xcodeproj from project.yml
@@ -58,26 +29,87 @@ open Stacks.xcodeproj      # or build from the command line:
 xcodebuild -project Stacks.xcodeproj -scheme Stacks -destination 'platform=macOS' build
 ```
 
-> If a fresh checkout hits "Multiple commands produce …" conflicts, delete
-> the root `Package.resolved` and `.build` before `xcodegen generate`
-> (xcodegen materializes the resolved package graph into the project).
+## Build and run - headless server on Linux
 
-## Build and run — headless server
+### Build
 
 ```bash
+git clone git@github.com:MattKevan/Stacks.git stacks
+cd stacks
 swift build -c release
-.build/release/stacks create /srv/stacks/library
-.build/release/stacks serve /srv/stacks/library
 ```
 
-`import-calibre` creates a library from an existing Calibre library. Full
-Linux setup (toolchain, Avahi, systemd, auth, firewall), usage, and
-troubleshooting: **[LINUX_SERVER.md](LINUX_SERVER.md)**.
+You'll need to install the Swift toolchain if not already present.
 
-## Tests
+### Install
+
+Copy the binary onto your PATH so `stacks` works from any directory:
 
 ```bash
-swift test                  # headless server subset (real-socket protocol tests)
-xcodebuild -project Stacks.xcodeproj -scheme Stacks -destination 'platform=macOS' \
-  -only-testing:StacksTests -only-testing:StacksCoreTests test
+mkdir -p ~/.local/bin
+install -m 755 .build/release/stacks ~/.local/bin/stacks
 ```
+
+`~/.local/bin` is usually on PATH already (Ubuntu adds it when the directory
+exists); otherwise add it once to your shell profile and reload. Re-run the
+`install` line after every rebuild.
+
+### Create a library
+
+```bash
+stacks create /path/to/stacks/library
+
+```
+### Import a Calibre library
+
+```bash
+stacks import-calibre '/path/to/Calibre Library' '/path/to/stacks/library'
+```
+
+### Run
+
+```bash
+stacks serve /path/to/stacks/library
+```
+
+Options (see `stacks serve --help`):
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--port <port>` | `8080` | Listen port |
+| `--user <user>` | — | Require this username (with `--password`) |
+| `--password <pass>` | — | Password for `--user` |
+| `--name <name>` | folder name | Display name (advertisement/diagnostics) |
+| `--indexes <dir>` | see below | Catalog indexes directory |
+| `--no-bonjour` | off | Do not advertise the library |
+
+By default stacks uses port 8080, so if something is already using that you can pick any other free port.
+
+### systemd (optional)
+
+systemd **does not use your shell PATH**, so `ExecStart` needs the absolute
+binary path (wherever you installed it) and the absolute library path —
+`$HOME`/`~` are not expanded. 
+
+```
+# /etc/systemd/system/stacks-server.service
+[Unit]
+Description=Stacks library server
+After=network.target
+
+[Service]
+User=matt
+ExecStart=/path/to/bin/stacks serve "/path/to/stacks/library"
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now stacks-server
+sudo ufw allow 8080 (or other selected port)
+```
+
+After re-installing a rebuilt binary (`install … ~/.local/bin/stacks`),
+restart the service to pick it up: `sudo systemctl restart stacks-server`.
