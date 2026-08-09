@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import StacksCore
 import SwiftUI
 
@@ -11,6 +12,10 @@ struct MetadataMergeReviewSheet: View {
     @Binding var choices: [MetadataMergeItem.Field: MetadataMergeChoice]
     let currentCover: NSImage?
     let fetchedCover: NSImage?
+    /// Alternative covers from the source (Google Books sizes); the user can
+    /// pick one or upload their own file.
+    let coverURLs: [URL]
+    let onChooseCover: (Data) -> Void
     let onConfirm: () -> Void
     let onCancel: () -> Void
 
@@ -78,6 +83,21 @@ struct MetadataMergeReviewSheet: View {
                     coverThumbnail(currentCover, caption: "Current")
                     coverThumbnail(fetchedCover, caption: "Fetched")
                 }
+                if !coverURLs.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(Array(coverURLs.enumerated()), id: \.offset) { _, url in
+                            CoverOptionThumbnail(url: url, onChoose: onChooseCover)
+                        }
+                        Button {
+                            chooseCoverFile()
+                        } label: {
+                            Label("Choose File…", systemImage: "folder")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.tint)
+                    }
+                    .padding(.top, 6)
+                }
             }
             Spacer()
             if item.fetchedValue == nil {
@@ -90,6 +110,18 @@ struct MetadataMergeReviewSheet: View {
         }
         .padding(6)
         .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.3)))
+    }
+
+    /// NSOpenPanel for the "Choose File…" cover upload: any image file.
+    private func chooseCoverFile() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a Cover Image"
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.image]
+        if panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) {
+            onChooseCover(data)
+        }
     }
 
     private func coverThumbnail(_ image: NSImage?, caption: String) -> some View {
@@ -126,5 +158,50 @@ struct MetadataMergeReviewSheet: View {
             get: { choices[field] ?? .keep },
             set: { choices[field] = $0 }
         )
+    }
+}
+
+/// A tappable alternative-cover thumbnail: loads the image from the source,
+/// and tapping it hands the bytes to the caller (the pending cover).
+private struct CoverOptionThumbnail: View {
+    let url: URL
+    let onChoose: (Data) -> Void
+    @State private var image: NSImage?
+
+    var body: some View {
+        Button {
+            Task {
+                if let data = try? await Self.fetch(url) {
+                    onChoose(data)
+                }
+            }
+        } label: {
+            Group {
+                if let image {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+            .frame(width: 44, height: 64)
+            .background(RoundedRectangle(cornerRadius: 4).fill(.quaternary))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(url.absoluteString)
+        .task(id: url) {
+            if let data = try? await Self.fetch(url), !Task.isCancelled {
+                image = NSImage(data: data)
+            }
+        }
+    }
+
+    private static func fetch(_ url: URL) async throws -> Data {
+        let client = URLSessionMetadataHTTPClient()
+        let request = URLRequest(url: url)
+        return try await client.data(from: request)
     }
 }

@@ -96,8 +96,10 @@ extension LibrarySession {
     /// Looks up metadata for a book (ISBN-first, then title+author) and either
     /// auto-applies a high-confidence candidate or presents the review sheet.
     func fetchMetadata(for bookID: UUID) async {
-        guard let repository, !isFetchingMetadata else { return }
-        guard let book = books.first(where: { $0.id == bookID }) else { return }
+        guard !isFetchingMetadata else { return }
+        // The browser context (home or a connected remote) owns the books —
+        // a remote book must be findable here or the lookup silently no-ops.
+        guard let book = sessionBrowserBooks.first(where: { $0.id == bookID }) else { return }
         metadataLookupError = nil
         isFetchingMetadata = true
         defer { isFetchingMetadata = false }
@@ -148,8 +150,7 @@ extension LibrarySession {
     /// even a high-confidence candidate comes back as a candidate so the user
     /// can decide per field. Errors surface via `metadataLookupError`.
     func lookupMetadataCandidates(for bookID: UUID) async -> [MetadataCandidate] {
-        guard let repository else { return [] }
-        guard let book = books.first(where: { $0.id == bookID }) else { return [] }
+        guard let book = sessionBrowserBooks.first(where: { $0.id == bookID }) else { return [] }
         do {
             let result = try await lookupResult(for: book)
             if let autoApply = result.autoApply {
@@ -174,8 +175,7 @@ extension LibrarySession {
                 metadataReviewPresented = false
             }
         }
-        guard let repository else { return }
-        guard let book = books.first(where: { $0.id == bookID }) else { return }
+        guard let book = sessionBrowserBooks.first(where: { $0.id == bookID }) else { return }
 
         var edit = BookEdit()
         var changed = false
@@ -199,19 +199,15 @@ extension LibrarySession {
             edit.identifiers = book.identifiers.merging(["isbn": isbn]) { _, new in new }
             changed = true
         }
-        if changed {
-            do {
-                _ = try await repository.updateBook(id: bookID, edit: edit)
-            } catch {
-                lastError = error.localizedDescription
-            }
-        }
-
+        // Fetch the cover (bounded) so the apply can carry it — the write
+        // path below differs for home vs remote, but the cover bytes are
+        // shared.
+        var coverData: Data?
         if book.coverHash == nil, let coverURL = candidate.coverURL {
             do {
                 let client = URLSessionMetadataHTTPClient()
                 let request = URLRequest(url: coverURL)
-                let data = try await withThrowingTaskGroup(of: Data.self) { group in
+                coverData = try await withThrowingTaskGroup(of: Data.self) { group in
                     group.addTask { try await client.data(from: request) }
                     group.addTask {
                         try await Task.sleep(for: .seconds(10))
@@ -223,12 +219,44 @@ extension LibrarySession {
                     group.cancelAll()
                     return data
                 }
-                _ = try await repository.updateCover(coverData: data, for: bookID)
             } catch {
                 // Best-effort: a cover download failure must not undo the metadata apply.
                 metadataLookupError = "Metadata applied; cover download failed."
             }
         }
+
+        if let remote = activeRemote, remote.books.contains(where: { $0.id == bookID }) {
+            // Remote apply: push the edit (+ staged cover) to the server —
+            // same path the editor's Save uses.
+            if changed || coverData != nil {
+                await saveRemoteEdit(edit, coverData: coverData, for: bookID, remote: remote)
+            }
+            return
+        }
+
+        guard let repository else { return }
+        if changed {
+            do {
+                _ = try await repository.updateBook(id: bookID, edit: edit)
+            } catch {
+                lastError = error.localizedDescription
+            }
+        }
+        if let coverData {
+            do {
+                _ = try await repository.updateCover(coverData: coverData, for: bookID)
+            } catch {
+                // Best-effort: a cover download failure must not undo the metadata apply.
+                metadataLookupError = "Metadata applied; cover update failed."
+            }
+        }
         await refreshAll()
+    }
+
+    /// The books of the current browser context (home or remote) — the
+    /// enrichment lookups must find the book the user selected regardless of
+    /// which library it lives in.
+    private var sessionBrowserBooks: [IndexedBook] {
+        browser?.books ?? []
     }
 }

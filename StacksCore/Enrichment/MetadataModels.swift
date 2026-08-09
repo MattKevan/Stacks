@@ -24,6 +24,10 @@ public struct MetadataCandidate: Identifiable, Sendable, Equatable {
     public let publicationDate: Date?
     public let isbn: String?
     public let coverURL: URL?
+    /// Additional cover options from the source (e.g. Google Books' image
+    /// sizes) — the editor's cover picker lets the user choose among them or
+    /// upload their own. Empty when the source exposes a single cover.
+    public let coverURLs: [URL]
     public let sourceName: String
 
     public init(
@@ -34,6 +38,7 @@ public struct MetadataCandidate: Identifiable, Sendable, Equatable {
         publicationDate: Date?,
         isbn: String?,
         coverURL: URL?,
+        coverURLs: [URL] = [],
         sourceName: String
     ) {
         self.id = id
@@ -43,7 +48,13 @@ public struct MetadataCandidate: Identifiable, Sendable, Equatable {
         self.publicationDate = publicationDate
         self.isbn = isbn
         self.coverURL = coverURL
+        self.coverURLs = coverURLs
         self.sourceName = sourceName
+    }
+
+    /// Every cover option, primary first.
+    public var allCoverURLs: [URL] {
+        coverURLs.isEmpty ? (coverURL.map { [$0] } ?? []) : coverURLs
     }
 }
 

@@ -61,13 +61,22 @@ public struct GoogleBooksSource: MetadataSourceProviding {
         }
         struct ImageLinks: Decodable {
             let thumbnail: String?
+            let small: String?
+            let medium: String?
+            let large: String?
+            let extraLarge: String?
         }
         let response = try JSONDecoder().decode(Response.self, from: data)
         return (response.items ?? []).compactMap { item in
             guard let title = item.volumeInfo.title, !title.isEmpty else { return nil }
-            let coverURL = item.volumeInfo.imageLinks?.thumbnail
-                .map { $0.replacingOccurrences(of: "http://", with: "https://") }
-                .flatMap(URL.init(string:))
+            // Google Books exposes the same artwork at several sizes; expose
+            // them all so the user can pick (the editor's cover chooser).
+            let coverURLs = (item.volumeInfo.imageLinks.map {
+                [$0.thumbnail, $0.small, $0.medium, $0.large, $0.extraLarge]
+                    .compactMap { $0 }
+                    .map { $0.replacingOccurrences(of: "http://", with: "https://") }
+                    .compactMap(URL.init(string:))
+            } ?? [])
             return MetadataCandidate(
                 id: "google-\(item.id)",
                 title: title,
@@ -76,7 +85,8 @@ public struct GoogleBooksSource: MetadataSourceProviding {
                 publicationDate: item.volumeInfo.publishedDate
                     .flatMap(MetadataDateParser.date(fromPublishedString:)),
                 isbn: nil,
-                coverURL: coverURL,
+                coverURL: coverURLs.first,
+                coverURLs: coverURLs,
                 sourceName: sourceName
             )
         }

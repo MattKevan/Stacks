@@ -228,6 +228,8 @@ struct MetadataEditorView: View {
                     choices: $mergeChoices,
                     currentCover: currentCoverImage,
                     fetchedCover: fetchedCoverImage,
+                    coverURLs: candidate.allCoverURLs,
+                    onChooseCover: handleChosenCover(_:),
                     onConfirm: {
                         confirmMerge(plan: plan, candidate: candidate)
                     },
@@ -481,9 +483,11 @@ extension MetadataEditorView {
         if let newIdentifiers = result.edit.identifiers {
             identifiersText = newIdentifiers.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: "\n")
         }
-        if result.coverChosen, let coverURL = candidate.coverURL {
+        if result.coverChosen, pendingCoverData == nil, let coverURL = candidate.coverURL {
             // Keep Save disabled until the bounded download resolves, so Save
             // can never beat the download and silently drop the chosen cover.
+            // Skipped when the user already picked an alternative cover or
+            // uploaded one (handleChosenCover set pendingCoverData).
             coverPending = true
             coverDownloadTask = Task {
                 if let data = await Self.downloadBounded(coverURL), !Task.isCancelled {
@@ -495,6 +499,17 @@ extension MetadataEditorView {
             }
         }
         reviewStep = nil
+    }
+
+    /// A cover the user picked from the alternatives or uploaded: it becomes
+    /// the pending cover immediately (no download needed), and the review
+    /// sheet's "Fetched" thumbnail swaps to it.
+    private func handleChosenCover(_ data: Data) {
+        coverDownloadTask?.cancel()
+        coverDownloadTask = nil
+        pendingCoverData = data
+        coverPending = false
+        fetchedCoverImage = NSImage(data: data)
     }
 
     /// Best-effort bounded download (10s) for review thumbnails and the
