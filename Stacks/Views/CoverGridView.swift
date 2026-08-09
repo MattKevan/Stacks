@@ -237,25 +237,11 @@ private struct CoverTile: View {
     @State private var isHovering = false
 
     var body: some View {
+        // Pure covers: no title/author captions in the grid (the table view
+        // carries the text). Every tile is just the cover, so they all sit
+        // on the shelf line.
         VStack(alignment: .leading, spacing: 6) {
             coverArea
-            // Fixed text heights: the title wraps 1-2 lines and authors 1
-            // line, so without reserved heights the cover's offset from the
-            // tile bottom varies per book (covers land on different baselines
-            // "seemingly at random"). Reserving the space keeps every cover's
-            // bottom at a constant offset from the tile bottom, so the grid's
-            // `.bottom` alignment puts them all on the shelf line.
-            Text(book.title)
-                .font(.caption)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .frame(height: 30, alignment: .top)
-                .foregroundStyle(.primary)
-            Text(book.authors.joined(separator: ", "))
-                .font(.caption2)
-                .lineLimit(1)
-                .frame(height: 14, alignment: .top)
-                .foregroundStyle(.secondary)
         }
         .padding(6)
         .contentShape(Rectangle())
@@ -380,29 +366,15 @@ private struct CoverTile: View {
     }
 
     /// The portrait placeholder for a book without a cover.
+    /// The portrait placeholder for a book without a cover: just the muted
+    /// gradient + a small book glyph — no text (the grid is covers only).
     private var placeholderCover: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 4)
                 .fill(placeholderGradient)
-            VStack(spacing: 6) {
-                Image(systemName: "book.closed")
-                    .font(.system(size: 26, weight: .light))
-                    .foregroundStyle(.secondary)
-                Text(book.title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                    .padding(.horizontal, 8)
-                if let firstAuthor = book.authors.first {
-                    Text(firstAuthor)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .padding(.horizontal, 8)
-                }
-            }
+            Image(systemName: "book.closed")
+                .font(.system(size: 26, weight: .light))
+                .foregroundStyle(.secondary)
         }
         .aspectRatio(2.0 / 3.0, contentMode: .fit)
     }
