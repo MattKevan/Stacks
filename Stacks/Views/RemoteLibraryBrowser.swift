@@ -214,7 +214,7 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     /// not a connection drop.
     func noteUnreachable(_ error: Error) {
         if let remoteError = error as? RemoteLibrary.RemoteError,
-           case .unreachable = remoteError {
+           case .unreachable(_) = remoteError {
             isConnected = false
         }
     }

@@ -40,15 +40,15 @@ public actor RemoteLibrary {
     }
 
     public enum RemoteError: Error, Equatable {
-        case unreachable
+        case unreachable(String)
         case serverError(Int)
 
         /// Human-readable failure text — without this, callers only ever see
-        /// the opaque "(RemoteError error N.)" and the HTTP status is hidden.
+        /// the opaque "(RemoteError error N.)" and the real cause is hidden.
         public var localizedDescription: String {
             switch self {
-            case .unreachable:
-                return "server unreachable"
+            case .unreachable(let detail):
+                return "server unreachable (\(detail))"
             case .serverError(let status):
                 return "server error (\(status))"
             }
@@ -217,7 +217,12 @@ public actor RemoteLibrary {
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
-            throw RemoteError.unreachable
+            // The underlying URLError names the real cause (ATS block,
+            // timeout, refused, offline…) — without it the caller only sees
+            // "server unreachable" and diagnosing is guesswork.
+            let detail = (error as? URLError)?.localizedDescription
+                ?? error.localizedDescription
+            throw RemoteError.unreachable(detail)
         }
         return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
     }
