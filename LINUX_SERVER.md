@@ -26,6 +26,8 @@ so a plain `swift build` works on macOS, Linux arm64 (Raspberry Pi 4/5,
   avahi-utils` (avahi-daemon usually runs by default on desktop distros;
   headless servers: `sudo systemctl enable --now avahi-daemon`). Without it
   the server runs fine — clients just reach it by host:port.
+- For client-side features: `poppler-utils` (PDF metadata extraction) and
+  `libnotify-bin` (completion notifications via notify-send).
 - Raspberry Pi: arm64 only — use the 64-bit Raspberry Pi OS image (Pi 3's
   32-bit armv7 is not supported).
 
@@ -63,6 +65,18 @@ exists); otherwise add it once to your shell profile and reload. Re-run the
 
 Prints the library ID (used by clients and the Bonjour TXT record) and the
 format version.
+
+Other library commands:
+
+```bash
+stacks import <library> <book-file>...      # add books (EPUB/PDF/DJVU/MOBI)
+stacks enrich <library>                     # fetch missing authors/tags online
+stacks list <library> [--sort name|date] [--author NAME]
+stacks search <library> <query>
+stacks browse http://host:port              # interactive terminal client
+                                            # (list/search/facet/sort/open/
+                                            #  download/upload/refresh)
+```
 
 ## Import an existing Calibre library
 
