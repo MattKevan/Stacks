@@ -145,7 +145,7 @@ public enum MobiToEpubConverter {
         <html xmlns="http://www.w3.org/1999/xhtml">
         <head><title>\(title)</title></head>
         <body>
-        \(normalizedContent(chapter.html))
+        \(repairHTML(normalizedContent(chapter.html)))
         </body>
         </html>
         """
@@ -211,6 +211,41 @@ public enum MobiToEpubConverter {
         let digest = SHA256.hash(data: Data(seed.utf8))
         let hex = digest.map { String(format: "%02x", $0) }.joined().prefix(16)
         return "mobi-" + String(hex)
+    }
+
+    /// Repairs the most common malformations in MOBI-derived HTML before it
+    /// is embedded as XHTML. Sloppy source e-books routinely contain raw
+    /// ampersands (AT&T), unquoted attribute values (width=640), and stray
+    /// quotes inside attribute values — all of which break the EPUB's XML
+    /// ("AttValue: ' or \" expected" at parse time). This is a best-effort
+    /// repair, not a full HTML tidy: well-formed markup passes through
+    /// byte-identical; the three failure classes above are normalized.
+    static func repairHTML(_ html: String) -> String {
+        var value = html
+        // 1. Escape raw ampersands that are not already entities.
+        value = value.replacingOccurrences(
+            of: "&(?![a-zA-Z]+;|#[0-9]+;|#[xX][0-9a-fA-F]+;)",
+            with: "&amp;",
+            options: .regularExpression
+        )
+        // 2. Re-quote attribute values: `name=value` becomes `name="value"`
+        //    with the value XML-escaped. Unquoted values (spaces, quotes) and
+        //    single-quoted values get normalized to double quotes; double-
+        //    quoted values are re-emitted identically (escaped).
+        value = value.replacingOccurrences(
+            of: #"([a-zA-Z_:][a-zA-Z0-9_:.-]*)\s*=\s*(?:\"([^\"]*)\"|'((?:[^']|'[^>])*)'|([^\s\"'=<>`]+))"#,
+            with: #"$1=\"$2$3$4\""#,
+            options: .regularExpression
+        )
+        // 3. Escape any remaining stray double quotes that sit inside a tag
+        //    but outside a value (e.g. a truncated attribute) — they would
+        //    still break XML. Targets `<...">` and `"...>` fragments.
+        value = value.replacingOccurrences(
+            of: #"(<[^>]*)\""([^>]*>)"#,
+            with: #"$1&quot;$2"#,
+            options: .regularExpression
+        )
+        return value
     }
 
     private static func escaped(_ value: String) -> String {

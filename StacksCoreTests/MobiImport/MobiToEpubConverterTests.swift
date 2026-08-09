@@ -110,6 +110,56 @@ struct MobiToEpubConverterTests {
     }
 
     @Test
+    func repairHTMLFixesAmpersandsUnquotedAndStrayQuotes() {
+        // Raw & in text — the single most common MOBI breakage.
+        #expect(MobiToEpubConverter.repairHTML("<p>AT&T and R&D</p>")
+            == "<p>AT&amp;T and R&amp;D</p>")
+        // Existing entities are preserved, not double-escaped.
+        #expect(MobiToEpubConverter.repairHTML("<p>A &amp; B &#169;</p>")
+            == "<p>A &amp; B &#169;</p>")
+        // Unquoted attribute values get quoted.
+        #expect(MobiToEpubConverter.repairHTML(#"<img src=cover.jpg width=640 height=480>"#)
+            == #"<img src="cover.jpg" width="640" height="480">"#)
+        // Stray quote inside a quoted attribute value: re-quoted to double
+        // quotes — the apostrophe is legal inside a "..." value.
+        #expect(MobiToEpubConverter.repairHTML(#"<a href="x" alt='It's a test'>"#)
+            == #"<a href="x" alt="It's a test">"#)
+        // Well-formed markup passes through unchanged.
+        let clean = #"<p class="body">Hello <b>world</b></p>"#
+        #expect(MobiToEpubConverter.repairHTML(clean) == clean)
+    }
+
+    @Test
+    func assembledChapterXHTMLIsWellFormed() throws {
+        // The exact failure the user reported: a MOBI chapter whose raw HTML
+        // breaks the EPUB (line-N "AttValue expected"). After repair the
+        // assembled XHTML must parse as XML.
+        let broken = #"<p>AT&T <img src=cover.png alt='It's a test' width=200></p>"#
+        let content = MobiContent(
+            title: "Broken & Book",
+            authors: ["Author & Son"],
+            cover: nil,
+            chapters: [MobiChapter(id: "chap1", title: "Chapter & One", html: broken)]
+        )
+        let archive = try archive(from: MobiToEpubConverter.convert(content))
+        guard let xhtml = entryData(archive, "chap1.xhtml"),
+              let text = String(data: xhtml, encoding: .utf8) else {
+            Issue.record("chap1.xhtml missing")
+            return
+        }
+        // Must not contain the raw breakers.
+        #expect(!text.contains("AT&T"))
+        #expect(!text.contains("alt='It's"))
+        // And must parse as XML (FoundationXML is imported at file scope
+        // under the same canImport guard below).
+        #if canImport(FoundationXML)
+        #expect(throws: Never.self) {
+            _ = try XMLDocument(xmlString: text)
+        }
+        #endif
+    }
+
+    @Test
     func normalizedContentStripsWrapper() {
         let wrapped = """
         <?xml version="1.0" encoding="utf-8"?>
