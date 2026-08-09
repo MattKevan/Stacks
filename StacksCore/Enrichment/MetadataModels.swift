@@ -61,6 +61,10 @@ public struct MetadataLookupResult: Sendable, Equatable {
 
 public enum MetadataSourceError: Error, Equatable {
     case badURL
+    /// The source answered with a non-2xx status (e.g. OpenLibrary 500 for
+    /// queries with an empty author param). The body is NOT JSON — decoding
+    /// it produced the misleading "data isn't in the correct format" error.
+    case httpStatus(Int)
 }
 
 /// Shared date parsing for source payloads: "YYYY", "YYYY-MM", "YYYY-MM-DD"

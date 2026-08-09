@@ -30,8 +30,18 @@ public struct URLSessionMetadataHTTPClient: MetadataHTTPClient {
         request.timeoutInterval = 15
         do {
             let (data, response) = try await session.data(for: request)
-            if let http = response as? HTTPURLResponse, (500..<600).contains(http.statusCode) {
+            guard let http = response as? HTTPURLResponse else {
+                throw MetadataSourceError.httpStatus(0)
+            }
+            // 5xx: transient — one bounded retry, then the status surfaces.
+            if (500..<600).contains(http.statusCode) {
                 return try await retry(request)
+            }
+            // 4xx (e.g. OpenLibrary's 500-for-empty-author is a known gap; a
+            // 404/400 page is never JSON) and 3xx are NOT successful lookups.
+            // The caller must never decode an HTML error page as JSON.
+            guard (200..<300).contains(http.statusCode) else {
+                throw MetadataSourceError.httpStatus(http.statusCode)
             }
             return data
         } catch let error as URLError where error.code == .timedOut {
@@ -41,7 +51,10 @@ public struct URLSessionMetadataHTTPClient: MetadataHTTPClient {
 
     private func retry(_ request: URLRequest) async throws -> Data {
         try await Task.sleep(for: .milliseconds(300))
-        let (data, _) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw MetadataSourceError.httpStatus(http.statusCode)
+        }
         return data
     }
 }

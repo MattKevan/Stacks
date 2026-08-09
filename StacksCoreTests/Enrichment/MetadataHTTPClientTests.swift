@@ -87,15 +87,20 @@ struct MetadataHTTPClientTests {
     }
 
     @Test
-    func doesNotRetryClientErrors() async throws {
+    func clientErrorsThrowInsteadOfDecodingErrorPages() async throws {
         StubURLProtocol.callCount = 0
-        StubURLProtocol.handler = { _ in (self.response(404), Data("nope".utf8)) }
+        StubURLProtocol.handler = { _ in (self.response(404), Data("<html>not json</html>".utf8)) }
         defer { StubURLProtocol.handler = nil }
 
         let client = makeClient()
-        let data = try await client.data(from: URLRequest(url: URL(string: "https://example.com/search.json")!))
-
-        #expect(String(data: data, encoding: .utf8) == "nope")
+        do {
+            _ = try await client.data(from: URLRequest(url: URL(string: "https://example.com/search.json")!))
+            Issue.record("expected a 4xx to throw, not return the error page")
+        } catch let error as MetadataSourceError {
+            // The error page must never reach the JSON decoder — the caller
+            // only ever decodes real 2xx bodies.
+            #expect(error == .httpStatus(404))
+        }
         #expect(StubURLProtocol.callCount == 1)
     }
 }
