@@ -391,6 +391,7 @@
 		9B1E90BAB5BAA49DC96FA752 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9CC95AAFD50B878FA36A64EE /* BookFolderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookFolderTests.swift; sourceTree = "<group>"; };
 		9D2EF657A967D68607EE3DC7 /* FacetNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FacetNavigation.swift; sourceTree = "<group>"; };
+		A0856D600FB538598432E36B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A0E1AD2D43316FDC579C1271 /* MTPEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTPEvent.swift; sourceTree = "<group>"; };
 		A3D38E4BEF4193E29EF6E9CC /* LibrarySession+Connection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibrarySession+Connection.swift"; sourceTree = "<group>"; };
 		A429D375788CFA095761C4E5 /* MetadataExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataExtractor.swift; sourceTree = "<group>"; };
@@ -925,6 +926,7 @@
 			isa = PBXGroup;
 			children = (
 				F057FC5CAF2291A380373E70 /* AppIcon.icon */,
+				A0856D600FB538598432E36B /* Info.plist */,
 				5EC229BF2C686DE36BF581B7 /* App */,
 				45E1E861B9F5CE852AB22C31 /* Resources */,
 				5617EF63CA8828BA3893A185 /* Stores */,
@@ -1505,6 +1507,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = N7J3BYZ94H;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Stacks/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppSleepDisabled = YES;
@@ -1629,6 +1632,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = N7J3BYZ94H;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Stacks/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppSleepDisabled = YES;

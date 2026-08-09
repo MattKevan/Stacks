@@ -79,6 +79,13 @@ targets:
         # the services we touch.
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: >-
           Stacks discovers and shares book libraries on your local network.
+        # ATS blocks cleartext HTTP to HOSTNAMES (raw IPs are exempt — which
+        # is why Bonjour discovery worked while manual hostname connects
+        # failed with 'server unreachable'). Local-network exemption: .local
+        # hostnames + link-local + LAN addresses, not arbitrary HTTP.
+        # Merged with the generated keys (GENERATE_INFOPLIST_FILE) — Xcode's
+        # INFOPLIST_KEY_ mechanism cannot emit the nested ATS dictionary.
+        INFOPLIST_FILE: Stacks/Info.plist
         INFOPLIST_KEY_NSBonjourServices:
           - _stacks._tcp
         # App Nap suspends idle apps; for an app holding a USB/MTP session this
