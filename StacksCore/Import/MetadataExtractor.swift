@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationXML)
+import FoundationXML
+#endif
 #if canImport(PDFKit)
 import PDFKit
 #endif
@@ -115,9 +118,11 @@ public enum MetadataExtractor {
         guard let data = try entryData(in: archive, path: resolved) else { return nil }
         return normalizeToJPEG(data)
         #else
-        // Linux: the JPEG normalization below depends on ImageIO. A later task
-        // replaces this with a portable cover decoder; until then EPUB cover
-        // extraction degrades to no cover rather than a failed import.
+        // Linux: no ImageIO, so EPUB cover extraction returns nil — the
+        // import degrades to no cover rather than failing. The portable
+        // CoverDecoder can't back this path yet: it is PNG-only and staged
+        // covers are named cover.jpg. macOS is unaffected (ImageIO branch
+        // above).
         return nil
         #endif
     }

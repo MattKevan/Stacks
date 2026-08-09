@@ -57,11 +57,11 @@ struct Browse: AsyncParsableCommand {
         } else {
             print("Cannot reach \(serverURL) — \(count) book\(count == 1 ? "" : "s") cached")
         }
-        fflush(stdout)
+        fflush(nil)
 
         while true {
             print("> ", terminator: "")
-            fflush(stdout)
+            fflush(nil)
             guard let raw = readLine(strippingNewline: true) else { break }  // EOF → exit 0
             let line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !line.isEmpty else { continue }
@@ -93,7 +93,7 @@ struct Browse: AsyncParsableCommand {
             }
             // Flush so a piped stdout shows this command's output before the
             // next prompt (on a TTY stdout is already line-buffered).
-            fflush(stdout)
+            fflush(nil)
         }
     }
 

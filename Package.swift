@@ -24,7 +24,7 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", exact: "4.5.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
-        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.19"),
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
         .package(url: "https://github.com/awxkee/libmobi-swift.git", exact: "1.0.2"),
     ],
     targets: [

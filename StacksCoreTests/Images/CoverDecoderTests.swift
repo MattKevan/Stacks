@@ -40,6 +40,7 @@ struct CoverDecoderTests {
         return (be32(16), be32(20))
     }
 
+#if canImport(ImageIO)
     /// Raw pixel bytes of a PNG decoded by ImageIO (macOS only) — a direct
     /// dataProvider read, no compositing, so alpha values are preserved.
     private static func decodePNGPixels(_ data: Data) -> [UInt8]? {
@@ -49,6 +50,7 @@ struct CoverDecoderTests {
               let cfData = provider.data else { return nil }
         return Array(cfData as Data)
     }
+#endif
 
     /// Extracts 8-bit RGB (plus opaque alpha) from ImageIO's little-endian
     /// 16-bit RGB pixels — 6 bytes per pixel, high byte at odd offsets.

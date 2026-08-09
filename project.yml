@@ -15,7 +15,7 @@ packages:
     exactVersion: 7.11.1
   ZIPFoundation:
     url: https://github.com/weichsel/ZIPFoundation.git
-    exactVersion: 0.9.19
+    exactVersion: 0.9.20
   libmobi-swift:
     url: https://github.com/awxkee/libmobi-swift.git
     exactVersion: 1.0.2
