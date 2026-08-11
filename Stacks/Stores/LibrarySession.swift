@@ -166,6 +166,9 @@ final class LibrarySession {
             if newValue?.id != _home?.id, sharing.isSharing {
                 Task { await sharing.stop() }
             }
+            // The Shared section shows OTHER libraries — never the app's own
+            // share, which advertises on the same _stacks._tcp bus.
+            discovery.excludedIDs = newValue.map { [$0.id] } ?? []
             _home = newValue
         }
     }

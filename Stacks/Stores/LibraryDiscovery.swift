@@ -52,6 +52,10 @@ public struct DiscoveredLibrary: Identifiable, Equatable, Sendable {
 @Observable
 public final class LibraryDiscovery {
     public private(set) var libraries: [DiscoveredLibrary] = []
+    /// Library ids never shown in the list — the app sets this to its own
+    /// home library id so its OWN share never appears in the Shared section
+    /// (only other libraries on the network should).
+    public var excludedIDs: Set<UUID> = []
     /// Non-nil while browsing is active (the privacy-prompt gate surfaced
     /// as `.waiting(.dns(kDNSServiceErr_PolicyDenied))` is reported here).
     public private(set) var browseError: String?
@@ -128,7 +132,7 @@ public final class LibraryDiscovery {
     /// Recomputes the visible list from what is resolved AND still advertised.
     private func refreshLibraries() {
         libraries = resolved
-            .filter { currentNames.contains($0.key) }
+            .filter { currentNames.contains($0.key) && !excludedIDs.contains($0.value.id) }
             .values.sorted {
                 $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
             }
