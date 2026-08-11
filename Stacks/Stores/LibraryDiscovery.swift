@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import Foundation
 import Network
 import Observation
@@ -132,11 +133,53 @@ public final class LibraryDiscovery {
     /// Recomputes the visible list from what is resolved AND still advertised.
     private func refreshLibraries() {
         libraries = resolved
-            .filter { currentNames.contains($0.key) && !excludedIDs.contains($0.value.id) }
+            .filter {
+                currentNames.contains($0.key)
+                    && !excludedIDs.contains($0.value.id)
+                    // The app's own share never appears: it resolves to
+                    // loopback or the device's own LAN address.
+                    && !Self.isLoopback($0.value.host)
+                    && !Self.localAddresses.contains($0.value.host)
+            }
             .values.sorted {
                 $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
             }
     }
+
+    /// Whether a host is the loopback address (the app's own share resolves
+    /// to 127.0.0.1 / ::1 on the local interface).
+    private static func isLoopback(_ host: String) -> Bool {
+        host == "127.0.0.1" || host == "::1" || host == "localhost"
+    }
+
+    /// This device's own IP addresses (IPv4 + IPv6, non-loopback, scope
+    /// suffixes stripped) — the app's own share can resolve via the LAN
+    /// interface to one of these instead of loopback.
+    private static let localAddresses: Set<String> = {
+        var addresses = Set<String>()
+        var interface: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&interface) == 0 else { return addresses }
+        defer { freeifaddrs(interface) }
+        var cursor = interface
+        while let current = cursor {
+            let family = current.pointee.ifa_addr.pointee.sa_family
+            if family == sa_family_t(AF_INET) || family == sa_family_t(AF_INET6) {
+                var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                if getnameinfo(
+                    current.pointee.ifa_addr,
+                    socklen_t(current.pointee.ifa_addr.pointee.sa_len),
+                    &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST
+                ) == 0 {
+                    // Match the discovery host form: scope suffix stripped.
+                    let value = String(cString: host).split(separator: "%").first.map(String.init)
+                        ?? String(cString: host)
+                    addresses.insert(value)
+                }
+            }
+            cursor = current.pointee.ifa_next
+        }
+        return addresses
+    }()
 
     private func resolve(_ result: NWBrowser.Result) {
         guard case .service(name: let name, type: _, domain: _, interface: _) = result.endpoint else {
