@@ -174,9 +174,20 @@ struct BookInspectorView: View {
 
     /// Converts HTML metadata to an AttributedString; nil when the value has
     /// no markup (so plain text renders verbatim, no interpretation).
+    /// The font the rendered description uses. Adjust here to change the
+    /// typography of HTML metadata (family and size); the source's own
+    /// semantic styles — bold, italic, headings — still win by CSS
+    /// specificity.
+    private static let metadataHTMLFont = NSFont.systemFont(ofSize: 13)
+
     private static func htmlAttributed(_ value: String) -> AttributedString? {
         guard value.contains("<") || value.contains("&") else { return nil }
-        guard let data = value.data(using: .utf8),
+        // The HTML import defaults to Helvetica 12pt; wrap the fragment in a
+        // style that pulls it into the app's typography instead.
+        let family = metadataHTMLFont.familyName ?? "Helvetica"
+        let size = metadataHTMLFont.pointSize
+        let styled = "<style>body, p, div, li, span, td { font-family: \"\(family)\", sans-serif; font-size: \(size)pt; }</style>" + value
+        guard let data = styled.data(using: .utf8),
               let ns = try? NSAttributedString(
                 data: data,
                 options: [
