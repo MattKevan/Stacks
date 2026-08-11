@@ -55,41 +55,79 @@ struct BookInspectorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 cover(book)
-                Group {
-                    LabeledContent("Title", value: book.title)
-                    LabeledContent("Authors", value: book.authors.joined(separator: ", "))
+                // Grid with a fixed label column: labels right-aligned, values
+                // left-aligned — so every value starts at the same x instead of
+                // hugging its label's width.
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                    GridRow(alignment: .firstTextBaseline) {
+                        Text("Title").gridColumnAlignment(.trailing).foregroundStyle(.secondary)
+                        Text(book.title).gridColumnAlignment(.leading)
+                    }
+                    GridRow(alignment: .firstTextBaseline) {
+                        Text("Authors").foregroundStyle(.secondary)
+                        Text(book.authors.joined(separator: ", "))
+                    }
                     if let series = book.series {
-                        LabeledContent("Series", value: book.seriesIndex.map { "\(series) #\($0)" } ?? series)
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Series").foregroundStyle(.secondary)
+                            Text(book.seriesIndex.map { "\(series) #\($0)" } ?? series)
+                        }
                     }
                     if let rating = book.rating {
-                        LabeledContent("Rating", value: String(repeating: "★", count: rating))
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Rating").foregroundStyle(.secondary)
+                            Text(String(repeating: "★", count: rating))
+                        }
                     }
                     if let publisher = book.publisher {
-                        LabeledContent("Publisher", value: publisher)
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Publisher").foregroundStyle(.secondary)
+                            Text(publisher)
+                        }
                     }
                     if let date = book.publicationDate {
-                        LabeledContent("Published", value: date.formatted(date: .abbreviated, time: .omitted))
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Published").foregroundStyle(.secondary)
+                            Text(date.formatted(date: .abbreviated, time: .omitted))
+                        }
                     }
-                    LabeledContent("Added", value: (book.addedDate ?? .now).formatted(date: .abbreviated, time: .omitted))
+                    GridRow(alignment: .firstTextBaseline) {
+                        Text("Added").foregroundStyle(.secondary)
+                        Text((book.addedDate ?? .now).formatted(date: .abbreviated, time: .omitted))
+                    }
                     if !book.languages.isEmpty {
-                        LabeledContent("Languages", value: book.languages.joined(separator: ", "))
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Languages").foregroundStyle(.secondary)
+                            Text(book.languages.joined(separator: ", "))
+                        }
                     }
                     if !book.tags.isEmpty {
-                        LabeledContent("Tags", value: book.tags.joined(separator: ", "))
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Tags").foregroundStyle(.secondary)
+                            Text(book.tags.joined(separator: ", "))
+                        }
                     }
                     if !book.identifiers.isEmpty {
-                        LabeledContent("Identifiers", value: book.identifiers.map { "\($0.key): \($0.value)" }.sorted().joined(separator: "\n"))
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Identifiers").foregroundStyle(.secondary)
+                            Text(book.identifiers.map { "\($0.key): \($0.value)" }.sorted().joined(separator: "\n"))
+                        }
                     }
                     if !book.formats.isEmpty {
-                        LabeledContent("Formats", value: book.formats.map { "\($0.kind) (\(Self.byteString($0.size)))" }.joined(separator: ", "))
-                    }
-                    if let comments = book.comments, !comments.isEmpty {
-                        Text(comments)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                        GridRow(alignment: .firstTextBaseline) {
+                            Text("Formats").foregroundStyle(.secondary)
+                            Text(book.formats.map { "\($0.kind) (\(Self.byteString($0.size)))" }.joined(separator: ", "))
+                        }
                     }
                 }
-                .labelStyle(.titleAndIcon)
+                // The description is often HTML from the source metadata —
+                // render it safely instead of showing raw tags.
+                if let comments = book.comments, !comments.isEmpty {
+                    metadataValue(comments)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
 
                 if !rawRows.isEmpty {
                     DisclosureGroup("Calibre Source Data") {
@@ -119,6 +157,35 @@ struct BookInspectorView: View {
             }
             .padding(16)
         }
+    }
+
+    /// Renders a metadata value as attributed text when it contains HTML
+    /// (Calibre/EPUB descriptions are often marked up) and as plain text
+    /// otherwise. NSAttributedString's HTML import renders text and styles
+    /// safely — no scripts or remote content execute.
+    @ViewBuilder
+    private func metadataValue(_ value: String) -> some View {
+        if let attributed = Self.htmlAttributed(value) {
+            Text(attributed)
+        } else {
+            Text(value)
+        }
+    }
+
+    /// Converts HTML metadata to an AttributedString; nil when the value has
+    /// no markup (so plain text renders verbatim, no interpretation).
+    private static func htmlAttributed(_ value: String) -> AttributedString? {
+        guard value.contains("<") || value.contains("&") else { return nil }
+        guard let data = value.data(using: .utf8),
+              let ns = try? NSAttributedString(
+                data: data,
+                options: [
+                    .documentType: NSAttributedString.DocumentType.html,
+                    .characterEncoding: String.Encoding.utf8.rawValue,
+                ],
+                documentAttributes: nil
+              ) else { return nil }
+        return AttributedString(ns)
     }
 
     @ViewBuilder
