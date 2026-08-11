@@ -126,6 +126,7 @@ struct BookInspectorView: View {
                     metadataValue(comments)
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                        .lineSpacing(4)
                         .padding(.top, 4)
                 }
 
@@ -183,17 +184,15 @@ struct BookInspectorView: View {
     private static func htmlAttributed(_ value: String) -> AttributedString? {
         guard value.contains("<") || value.contains("&") else { return nil }
         // The HTML import defaults to Helvetica 12pt; wrap the fragment in a
-        // style that pulls it into the app's typography instead.
+        // style that pulls it into the app's typography. Note: CSS
+        // line-height and margins are NOT honored by the importer — those
+        // are applied as paragraph attributes below.
         let family = metadataHTMLFont.familyName ?? "Helvetica"
         let styled = """
         <style>
         body, p, div, li, span, td {
             font-family: "\(family)", sans-serif;
             font-size: 10px;
-            line-height: 1.5;
-        }
-        p {
-            margin-bottom: 1rem;
         }
         </style>
         \(value)
@@ -207,7 +206,19 @@ struct BookInspectorView: View {
                 ],
                 documentAttributes: nil
               ) else { return nil }
-        return AttributedString(ns)
+        // CSS line-height / paragraph margins don't survive the HTML import,
+        // and the importer may not attach any .paragraphStyle at all — so set
+        // the paragraph attributes over the ENTIRE string unconditionally.
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = 4
+        paragraph.paragraphSpacing = 10
+        let mutable = NSMutableAttributedString(attributedString: ns)
+        mutable.addAttribute(
+            .paragraphStyle,
+            value: paragraph,
+            range: NSRange(location: 0, length: mutable.length)
+        )
+        return AttributedString(mutable)
     }
 
     @ViewBuilder
