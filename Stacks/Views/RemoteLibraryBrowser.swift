@@ -294,10 +294,18 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
             return cached
         }
         guard book.coverHash != nil,
-              let data = try? await remote.downloadCover(id: book.id),
-              let image = NSImage(data: data) else {
+              let data = try? await remote.downloadCover(id: book.id) else {
             return nil
         }
+        // Downsample through the same ImageIO pipeline as local covers
+        // (CoverDecoder on macOS = high-quality thumbnail decode). Loading
+        // the full-res bytes and letting SwiftUI single-pass downscale them
+        // aliases into moire/grain — the local path's clarity came from this
+        // step. Falls back to the raw image if the decode fails.
+        let image = CoverDecoder.decode(data: data, maxPixelSize: 640)
+            .flatMap { NSImage(data: $0) }
+            ?? NSImage(data: data)
+        guard let image else { return nil }
         coverCache.setObject(image, forKey: book.id.uuidString as NSString)
         return image
     }
