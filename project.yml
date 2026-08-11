@@ -73,6 +73,12 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Config/Stacks.entitlements
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: N7J3BYZ94H
+        # Hardened runtime is required for Developer ID notarization. Keep the
+        # hardened-runtime-compatible resource entitlements (network.client,
+        # device.usb) in Config/Stacks.entitlements in sync with this.
+        ENABLE_HARDENED_RUNTIME: YES
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
         INFOPLIST_KEY_CFBundleDisplayName: Stacks
         # Local Network privacy (macOS 15+): browsing/advertising Bonjour
         # services triggers the system prompt — declare the usage string and
