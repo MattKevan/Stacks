@@ -129,6 +129,7 @@ struct MetadataMergeReviewSheet: View {
             if let image {
                 Image(nsImage: image)
                     .resizable()
+                    .interpolation(.high)
                     .scaledToFit()
                     .frame(height: 90)
             } else {

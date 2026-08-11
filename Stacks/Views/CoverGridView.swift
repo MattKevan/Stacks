@@ -354,6 +354,9 @@ private struct CoverTile: View {
         if let image {
             Image(nsImage: image)
                 .resizable()
+                // High-quality interpolation: the default medium filter
+                // aliases (moire) when downscaling patterned covers.
+                .interpolation(.high)
                 .scaledToFit()
         } else {
             // A real cover fills the column width at its own aspect ratio;

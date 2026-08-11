@@ -126,6 +126,7 @@ struct BookInspectorView: View {
         if let coverImage {
             Image(nsImage: coverImage)
                 .resizable()
+                .interpolation(.high)
                 .scaledToFit()
                 .frame(height: 220)
                 .frame(maxWidth: .infinity)

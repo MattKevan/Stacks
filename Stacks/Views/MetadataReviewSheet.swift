@@ -59,6 +59,7 @@ private struct Thumbnail: View {
             if let image {
                 Image(nsImage: image)
                     .resizable()
+                    .interpolation(.high)
                     .scaledToFit()
             } else {
                 RoundedRectangle(cornerRadius: 4)
