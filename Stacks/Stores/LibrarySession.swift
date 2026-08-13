@@ -126,7 +126,12 @@ final class LibrarySession {
     /// Whether the browser context is a connected remote (vs home/device).
     var isRemoteContext: Bool { activeRemoteID != nil }
     /// Selects a remote as the browser context (or nil to return to home).
+    /// Remote and device contexts are mutually exclusive: selecting a remote
+    /// exits device mode, exactly as `selectDevice` clears the remote
+    /// context in reverse. Without this a connected Kindle keeps the detail
+    /// pane on the device view while the sidebar highlights the remote row.
     func selectRemote(_ id: UUID?) {
+        devices.selectedDeviceID = nil
         activeRemoteID = (id != nil && remotes.contains { $0.id == id }) ? id : nil
     }
     /// The library awaiting credentials: non-nil while the credential prompt
@@ -484,9 +489,14 @@ final class LibrarySession {
     func selectCategory(_ type: FacetType?) {
         // Selecting a home facet makes home the browser context (a sidebar
         // click on a Library-section row switches back from a remote or
-        // device — same rule the pre-network peers followed).
+        // device — same rule the pre-network peers followed). Device mode is
+        // mutually exclusive with the library context: `selectDevice` clears
+        // the home facet, so the reverse clears the device selection here —
+        // otherwise the sidebar highlight and the detail pane disagree and
+        // the home rows can't be reached while a Kindle is selected.
         activeLibraryID = home?.id
         activeRemoteID = nil
+        devices.selectedDeviceID = nil
         connection?.selectCategory(type)
     }
     func restore(id: UUID) async { await connection?.restore(id: id) }
