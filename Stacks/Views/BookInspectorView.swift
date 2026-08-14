@@ -192,7 +192,7 @@ struct BookInspectorView: View {
         <style>
         body, p, div, li, span, td {
             font-family: "\(family)", sans-serif;
-            font-size: 10px;
+            font-size: 12px;
         }
         </style>
         \(value)
@@ -210,7 +210,7 @@ struct BookInspectorView: View {
         // and the importer may not attach any .paragraphStyle at all — so set
         // the paragraph attributes over the ENTIRE string unconditionally.
         let paragraph = NSMutableParagraphStyle()
-        paragraph.lineSpacing = 4
+        paragraph.lineSpacing = 6
         paragraph.paragraphSpacing = 10
         let mutable = NSMutableAttributedString(attributedString: ns)
         mutable.addAttribute(
