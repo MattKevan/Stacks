@@ -30,7 +30,7 @@ final class AppSettings {
     // MARK: - Sharing pane
 
     static let shareLibraryOverNetworkKey = "shareLibraryOverNetwork"
-    static let shareLibraryOverNetworkDefault = false
+    static let shareLibraryOverNetworkDefault = true
     static let advertiseWithBonjourKey = "advertiseWithBonjour"
     static let advertiseWithBonjourDefault = true
     static let requireSharePasswordKey = "requireSharePassword"
@@ -39,7 +39,7 @@ final class AppSettings {
     static let sharePortKey = "sharePort"
     static let sharePortDefault = 8080
     static let shareOPDSOverNetworkKey = "shareOPDSOverNetwork"
-    static let shareOPDSOverNetworkDefault = false
+    static let shareOPDSOverNetworkDefault = true
 
     /// The current values for code paths without a view (`LibrarySession`'s
     /// auto-start reads these straight from UserDefaults).
@@ -72,7 +72,7 @@ final class AppSettings {
 
     /// Share the open library over the LAN (the Settings → Sharing toggle).
     /// The server lifecycle is owned by `LibrarySession.sharing`; this is the
-    /// persisted preference + the pane's source of truth.
+    /// persisted preference + the pane's source of truth. On by default.
     var shareLibraryOverNetwork: Bool {
         get { _shareLibraryOverNetwork }
         set {
@@ -123,7 +123,7 @@ final class AppSettings {
     /// Expose the OPDS catalog to third-party readers (Thorium, KOReader,
     /// Calibre) independently of the Stacks sync share. Served by the same
     /// server on the same port as `sharePort`; turning it on while sharing
-    /// restarts the server with the OPDS routes enabled.
+    /// restarts the server with the OPDS routes enabled. On by default.
     var shareOPDSOverNetwork: Bool {
         get { _shareOPDSOverNetwork }
         set {
