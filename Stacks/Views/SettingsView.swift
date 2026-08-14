@@ -50,7 +50,7 @@ struct SettingsView: View {
                 }
                 if settings.shareLibraryOverNetwork || settings.shareOPDSOverNetwork {
                     LabeledContent("Port") {
-                        TextField("Port", value: $settings.sharePort, format: .number)
+                        TextField("Port", value: $settings.sharePort, format: .number.grouping(.never))
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 80)
                             .multilineTextAlignment(.trailing)
