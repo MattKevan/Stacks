@@ -64,6 +64,7 @@ public actor LibraryServer {
         let displayName = self.displayName
 
         // MARK: - Sync protocol
+        if configuration.serveSync {
 
         router.get("api/identity") { _, _ -> LibraryIdentity in
             LibraryIdentity(
@@ -166,8 +167,10 @@ public actor LibraryServer {
             response.headers[.contentType] = "image/jpeg"
             return response
         }
+        }
 
         // MARK: - OPDS (third-party readers)
+        if configuration.serveOPDS {
 
         router.get("opds") { request, _ -> String in
             OPDSFeed.root(baseURL: "http://\(request.head.authority ?? "localhost")")
@@ -249,6 +252,7 @@ public actor LibraryServer {
                 pageHref: "/opds/books/\(book.id.uuidString)"
             )
         }
+        }
 
         return Application(router: router, configuration: .init(address: .hostname("0.0.0.0", port: configuration.port)))
     }
@@ -297,11 +301,13 @@ public actor LibraryServer {
     private func startAdvertising() {
         #if canImport(Network)
         let advertiser = BonjourAdvertiser(
-            displayName: displayName, libraryID: libraryID, port: configuration.port
+            displayName: displayName, libraryID: libraryID, port: configuration.port,
+            serveSync: configuration.serveSync, serveOPDS: configuration.serveOPDS
         )
         #else
         let advertiser = AvahiAdvertiser(
-            displayName: displayName, libraryID: libraryID, port: configuration.port
+            displayName: displayName, libraryID: libraryID, port: configuration.port,
+            serveSync: configuration.serveSync, serveOPDS: configuration.serveOPDS
         )
         #endif
         advertiser.start()

@@ -17,28 +17,37 @@ final class AvahiAdvertiser: LibraryAdvertiser {
     private let displayName: String
     private let libraryID: UUID
     private let port: Int
+    private let serveSync: Bool
+    private let serveOPDS: Bool
     private var process: Process?
 
-    init(displayName: String, libraryID: UUID, port: Int) {
+    init(displayName: String, libraryID: UUID, port: Int, serveSync: Bool = true, serveOPDS: Bool = true) {
         self.displayName = displayName
         self.libraryID = libraryID
         self.port = port
+        self.serveSync = serveSync
+        self.serveOPDS = serveOPDS
     }
 
     func start() {
         guard process == nil else { return }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/avahi-publish-service")
-        process.arguments = [
+        var arguments = [
             "-s", displayName,
             "_stacks._tcp",
             String(port),
-            "api=/api",
             "id=\(libraryID.uuidString)",
             "v=1",
-            "path=/opds",
             "name=\(displayName)",
         ]
+        if serveSync {
+            arguments.append("api=/api")
+        }
+        if serveOPDS {
+            arguments.append("path=/opds")
+        }
+        process.arguments = arguments
         // avahi-publish-service blocks until terminated; the server owns the
         // process for the service's lifetime.
         process.standardOutput = FileHandle.nullDevice

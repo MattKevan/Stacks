@@ -19,6 +19,13 @@ public struct ServerConfiguration: Sendable {
     public var advertiseBonjour: Bool
     /// The Bonjour display name (defaults to the library folder name).
     public var displayName: String?
+    /// Serve the Stacks sync protocol (`/api/*`). The macOS app turns this
+    /// off when only the OPDS catalog is shared.
+    public var serveSync: Bool
+    /// Serve the OPDS catalog (`/opds*`) for third-party readers. Independent
+    /// of `serveSync`: the catalog can be exposed without the sync API, and
+    /// the sync API without the catalog.
+    public var serveOPDS: Bool
 
     public init(
         port: Int,
@@ -27,7 +34,9 @@ public struct ServerConfiguration: Sendable {
         username: String? = nil,
         password: String? = nil,
         advertiseBonjour: Bool = true,
-        displayName: String? = nil
+        displayName: String? = nil,
+        serveSync: Bool = true,
+        serveOPDS: Bool = true
     ) {
         self.port = port
         self.libraryPath = libraryPath
@@ -36,5 +45,7 @@ public struct ServerConfiguration: Sendable {
         self.password = password
         self.advertiseBonjour = advertiseBonjour
         self.displayName = displayName
+        self.serveSync = serveSync
+        self.serveOPDS = serveOPDS
     }
 }

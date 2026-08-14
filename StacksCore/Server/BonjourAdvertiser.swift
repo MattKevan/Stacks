@@ -17,7 +17,7 @@ import Network
 public final class BonjourAdvertiser: LibraryAdvertiser, @unchecked Sendable {
     private let service: NetService
 
-    public init(displayName: String, libraryID: UUID, port: Int) {
+    public init(displayName: String, libraryID: UUID, port: Int, serveSync: Bool = true, serveOPDS: Bool = true) {
         let service = NetService(
             domain: "local.",
             type: "_stacks._tcp.",
@@ -25,7 +25,7 @@ public final class BonjourAdvertiser: LibraryAdvertiser, @unchecked Sendable {
             port: Int32(port)
         )
         service.setTXTRecord(NetService.data(fromTXTRecord: Self.txtRecord(
-            name: displayName, libraryID: libraryID
+            name: displayName, libraryID: libraryID, serveSync: serveSync, serveOPDS: serveOPDS
         )))
         self.service = service
     }
@@ -39,15 +39,20 @@ public final class BonjourAdvertiser: LibraryAdvertiser, @unchecked Sendable {
     }
 
     /// The advertised TXT record — name, library id, protocol version, and
-    /// the OPDS + sync API paths.
-    public static func txtRecord(name: String, libraryID: UUID) -> [String: Data] {
-        [
+    /// the OPDS + sync API paths (each only when that surface is served).
+    public static func txtRecord(name: String, libraryID: UUID, serveSync: Bool = true, serveOPDS: Bool = true) -> [String: Data] {
+        var record: [String: Data] = [
             "name": Data(name.utf8),
             "id": Data(libraryID.uuidString.utf8),
             "v": Data("1".utf8),
-            "path": Data("/opds".utf8),
-            "api": Data("/api".utf8),
         ]
+        if serveSync {
+            record["api"] = Data("/api".utf8)
+        }
+        if serveOPDS {
+            record["path"] = Data("/opds".utf8)
+        }
+        return record
     }
 }
 #endif

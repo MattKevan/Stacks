@@ -15,16 +15,41 @@ final class SharingService {
     private(set) var lastError: String?
     private var server: LibraryServer?
 
-    /// Starts sharing the given (home) library. Idempotent while already
-    /// sharing. Serves the repository the app already has open: one journal,
-    /// one writer — local edits flow into the served sync stream and client
-    /// commands serialize through the same journal.
     /// The port the active server binds (set at start; drives the copy-URL).
     private var port = 8080
+    /// The feature flags of the running server; start() restarts when a
+    /// caller toggles OPDS/sync while the server is already up.
+    private var serveSync = true
+    private var serveOPDS = false
 
-    func start(library: LibraryConnection, port: Int, advertiseBonjour: Bool, username: String?, password: String?) async {
-        guard !isSharing else { return }
+    /// True while the running server serves the Stacks sync API.
+    var isServingSync: Bool { isSharing && serveSync }
+    /// True while the running server serves the OPDS catalog.
+    var isServingOPDS: Bool { isSharing && serveOPDS }
+
+    /// Starts sharing the given (home) library. Idempotent while sharing
+    /// with the same configuration; restarts (brief downtime) when the
+    /// feature flags or port change. Serves the repository the app already
+    /// has open: one journal, one writer — local edits flow into the served
+    /// sync stream and client commands serialize through the same journal.
+    func start(
+        library: LibraryConnection,
+        port: Int,
+        advertiseBonjour: Bool,
+        username: String?,
+        password: String?,
+        serveSync: Bool,
+        serveOPDS: Bool
+    ) async {
+        if isSharing, self.port == port, self.serveSync == serveSync, self.serveOPDS == serveOPDS {
+            return
+        }
+        if isSharing {
+            await stop()
+        }
         self.port = port
+        self.serveSync = serveSync
+        self.serveOPDS = serveOPDS
         let server = await LibraryServer(repository: library.coreRepository, configuration: .init(
             port: port,
             libraryPath: library.coreRepository.root.path,
@@ -32,7 +57,9 @@ final class SharingService {
             username: username,
             password: password,
             advertiseBonjour: advertiseBonjour,
-            displayName: library.name
+            displayName: library.name,
+            serveSync: serveSync,
+            serveOPDS: serveOPDS
         ))
         do {
             try await server.start()
@@ -40,6 +67,7 @@ final class SharingService {
             isSharing = true
             lastError = nil
         } catch {
+            isSharing = false
             lastError = "Couldn't start sharing: \(error.localizedDescription)"
         }
     }
@@ -49,6 +77,12 @@ final class SharingService {
         await server?.stop()
         server = nil
         isSharing = false
+    }
+
+    /// The OPDS catalog address for OTHER devices on the network
+    /// (e.g. `http://192.168.1.20:8080/opds`) — the URL a reader enters.
+    var opdsAddressString: String {
+        addressString + "/opds"
     }
 
     /// The LAN address clients connect to, e.g. `http://192.168.1.20:8080`.
@@ -77,5 +111,35 @@ final class SharingService {
             freeaddrinfo(addr)
         }
         return "http://\(hint):\(port)"
+    }
+}
+
+extension LibrarySession {
+    /// Starts or stops the shared server to match the current settings — the
+    /// single path for the Sharing pane's toggles, launch auto-start, and
+    /// opening a library. The sync API and OPDS catalog are served
+    /// independently: either preference on starts the server with that
+    /// surface enabled. Returns false when sharing was requested but no home
+    /// library is open (the pane surfaces the error; launch stays silent).
+    @discardableResult
+    func reconcileSharing() async -> Bool {
+        let share = AppSettings.shareLibraryOverNetwork()
+        let opds = AppSettings.shareOPDSOverNetwork()
+        if share || opds {
+            guard let home else { return false }
+            let password = ShareCredentials.load()
+            await sharing.start(
+                library: home,
+                port: AppSettings.sharePort(),
+                advertiseBonjour: AppSettings.advertiseWithBonjour(),
+                username: password == nil ? nil : AppSettings.shareUsername(),
+                password: password,
+                serveSync: share,
+                serveOPDS: opds
+            )
+        } else {
+            await sharing.stop()
+        }
+        return true
     }
 }

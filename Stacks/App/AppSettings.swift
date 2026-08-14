@@ -38,12 +38,37 @@ final class AppSettings {
     static let shareUsernameKey = "shareUsername"
     static let sharePortKey = "sharePort"
     static let sharePortDefault = 8080
+    static let shareOPDSOverNetworkKey = "shareOPDSOverNetwork"
+    static let shareOPDSOverNetworkDefault = false
+
+    /// The current values for code paths without a view (`LibrarySession`'s
+    /// auto-start reads these straight from UserDefaults).
+    static func shareLibraryOverNetwork(defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: shareLibraryOverNetworkKey) as? Bool ?? shareLibraryOverNetworkDefault
+    }
+
+    static func shareOPDSOverNetwork(defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: shareOPDSOverNetworkKey) as? Bool ?? shareOPDSOverNetworkDefault
+    }
+
+    static func sharePort(defaults: UserDefaults = .standard) -> Int {
+        defaults.object(forKey: sharePortKey) as? Int ?? sharePortDefault
+    }
+
+    static func advertiseWithBonjour(defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: advertiseWithBonjourKey) as? Bool ?? advertiseWithBonjourDefault
+    }
+
+    static func shareUsername(defaults: UserDefaults = .standard) -> String {
+        defaults.string(forKey: shareUsernameKey) ?? ""
+    }
 
     private var _shareLibraryOverNetwork: Bool
     private var _advertiseWithBonjour: Bool
     private var _requireSharePassword: Bool
     private var _shareUsername: String
     private var _sharePort: Int
+    private var _shareOPDSOverNetwork: Bool
 
     /// Share the open library over the LAN (the Settings → Sharing toggle).
     /// The server lifecycle is owned by `LibrarySession.sharing`; this is the
@@ -85,12 +110,25 @@ final class AppSettings {
     }
 
     /// The port the shared server binds (8080 default; change it when
-    /// another service already holds 8080).
+    /// another service already holds 8080). The OPDS catalog shares this
+    /// port (one server, one listener).
     var sharePort: Int {
         get { _sharePort }
         set {
             _sharePort = newValue
             UserDefaults.standard.set(newValue, forKey: Self.sharePortKey)
+        }
+    }
+
+    /// Expose the OPDS catalog to third-party readers (Thorium, KOReader,
+    /// Calibre) independently of the Stacks sync share. Served by the same
+    /// server on the same port as `sharePort`; turning it on while sharing
+    /// restarts the server with the OPDS routes enabled.
+    var shareOPDSOverNetwork: Bool {
+        get { _shareOPDSOverNetwork }
+        set {
+            _shareOPDSOverNetwork = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.shareOPDSOverNetworkKey)
         }
     }
 
@@ -106,5 +144,7 @@ final class AppSettings {
         _shareUsername = defaults.string(forKey: Self.shareUsernameKey) ?? ""
         _sharePort = defaults.object(forKey: Self.sharePortKey) as? Int
             ?? Self.sharePortDefault
+        _shareOPDSOverNetwork = defaults.object(forKey: Self.shareOPDSOverNetworkKey) as? Bool
+            ?? Self.shareOPDSOverNetworkDefault
     }
 }

@@ -23,7 +23,7 @@ struct ProtocolTests {
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
-    private func makeConfiguration(port: Int) async throws -> ServerConfiguration {
+    private func makeConfiguration(port: Int, serveSync: Bool = true, serveOPDS: Bool = true) async throws -> ServerConfiguration {
         let root = FileManager.default.temporaryDirectory
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -36,14 +36,16 @@ struct ProtocolTests {
         return ServerConfiguration(
             port: port,
             libraryPath: libraryPath,
-            indexesDirectory: root.appending(path: "server-indexes", directoryHint: .isDirectory)
+            indexesDirectory: root.appending(path: "server-indexes", directoryHint: .isDirectory),
+            serveSync: serveSync,
+            serveOPDS: serveOPDS
         )
     }
 
     /// Starts the server on the given port in a background task, waiting until
     /// it accepts connections.
-    private func startServer(port: Int) async throws {
-        let server = try await LibraryServer(configuration: try await makeConfiguration(port: port))
+    private func startServer(port: Int, serveSync: Bool = true, serveOPDS: Bool = true) async throws {
+        let server = try await LibraryServer(configuration: try await makeConfiguration(port: port, serveSync: serveSync, serveOPDS: serveOPDS))
         let app = try await server.makeApplication()
         Task { try await app.run() }
         try await ServerTestHarness.waitForServer(port: port)
@@ -318,6 +320,31 @@ struct ProtocolTests {
         try await startServer(port: port)
         let response = try await send(port, method: "GET", path: "/api/books/\(UUID().uuidString)/download")
         #expect(response.status == 404)
+    }
+
+    @Test
+    func opdsRoutesCanBeDisabledWhileSyncServes() async throws {
+        let port = try ServerTestHarness.freePort()
+        try await startServer(port: port, serveOPDS: false)
+
+        let opds = try await send(port, method: "GET", path: "/opds")
+        #expect(opds.status == 404)
+
+        let sync = try await send(port, method: "GET", path: "/api/sync?after=0")
+        #expect(sync.status == 200)
+    }
+
+    @Test
+    func syncRoutesCanBeDisabledWhileOPDSServes() async throws {
+        let port = try ServerTestHarness.freePort()
+        try await startServer(port: port, serveSync: false)
+
+        let sync = try await send(port, method: "GET", path: "/api/sync?after=0")
+        #expect(sync.status == 404)
+
+        let opds = try await send(port, method: "GET", path: "/opds")
+        #expect(opds.status == 200)
+        #expect(String(decoding: opds.data, as: UTF8.self).contains("<feed"))
     }
 
     @Test

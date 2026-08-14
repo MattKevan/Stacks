@@ -76,6 +76,9 @@ extension LibrarySession {
             if let oldHome { openStore.remove(oldHome.id) }
             activeLibraryID = connection.id
             state = .loaded
+            // Auto-start the shared server when a sharing/OPDS preference is
+            // on (launch reopen and the Open menu both land here).
+            Task { await self.reconcileSharing() }
             // The connection's init already refreshed; this post-wiring pass
             // guarantees a browse failure after open lands in `state = .failed`
             // (the init ran before the callbacks above were attached).
