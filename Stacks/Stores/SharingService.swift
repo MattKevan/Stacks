@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import StacksCore
+import SystemConfiguration
 
 /// Owns the in-process `LibraryServer` + Bonjour advertising driven by the
 /// Settings → Sharing pane. The app is one writer among many: when sharing is
@@ -80,37 +81,22 @@ final class SharingService {
     }
 
     /// The OPDS catalog address for OTHER devices on the network
-    /// (e.g. `http://192.168.1.20:8080/opds`) — the URL a reader enters.
+    /// (e.g. `http://MattBook-Air.local:8080/opds`) — the URL a reader enters.
     var opdsAddressString: String {
         addressString + "/opds"
     }
 
-    /// The LAN address clients connect to, e.g. `http://192.168.1.20:8080`.
+    /// The LAN address clients connect to, e.g. `http://MattBook-Air.local:8080`.
+    /// Uses the Bonjour-registered local hostname — other devices on the
+    /// network resolve it as `<hostname>.local` over mDNS, which is exactly
+    /// how they'd discover the server anyway. Falls back to `localhost`
+    /// when the name can't be determined.
     var addressString: String {
-        guard let name = Host.current().localizedName else { return "http://localhost:\(port)" }
-        // localizedName can contain spaces or non-hostname chars; keep the
-        // copy button honest by resolving the first IPv4 address instead.
-        var hint = "localhost"
-        var addr: UnsafeMutablePointer<addrinfo>?
-        if getaddrinfo(name, nil, nil, &addr) == 0, let addr {
-            var pointer: UnsafeMutablePointer<addrinfo>? = addr
-            while let current = pointer {
-                if current.pointee.ai_family == AF_INET {
-                    var address = current.pointee.ai_addr
-                    var hostBuffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                    if let address {
-                        if getnameinfo(address, socklen_t(current.pointee.ai_addrlen),
-                                       &hostBuffer, socklen_t(hostBuffer.count), nil, 0, NI_NUMERICHOST) == 0 {
-                            hint = String(cString: hostBuffer)
-                            break
-                        }
-                    }
-                }
-                pointer = current.pointee.ai_next
-            }
-            freeaddrinfo(addr)
+        guard let hostname = SCDynamicStoreCopyLocalHostName(nil) as String?,
+              !hostname.isEmpty else {
+            return "http://localhost:\(port)"
         }
-        return "http://\(hint):\(port)"
+        return "http://\(hostname).local:\(port)"
     }
 }
 
