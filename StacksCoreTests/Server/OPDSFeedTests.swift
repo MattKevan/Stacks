@@ -62,4 +62,43 @@ struct OPDSFeedTests {
         // Only 25 entries per page.
         #expect(page1.components(separatedBy: "<entry>").count == 26)
     }
+
+    @Test
+    func facetFeedListsValuesLinkingToTheirBookFeeds() {
+        let feed = OPDSFeed.facetFeed(
+            title: "Authors",
+            values: [("Alice", 2), ("Bob", 1)],
+            baseURL: "http://example.com",
+            href: "/opds/authors"
+        )
+        #expect(feed.contains("<title>Alice</title>"))
+        #expect(feed.contains("<title>Bob</title>"))
+        #expect(feed.contains("<content type=\"text\">2 books</content>"))
+        #expect(feed.contains("href=\"http://example.com/opds/authors/Alice\""))
+        #expect(feed.contains("href=\"http://example.com/opds/authors/Bob\""))
+    }
+
+    @Test
+    func facetFeedPercentEncodesValuesForPathSegments() {
+        // A value containing "/" must not break the route — the segment is
+        // percent-encoded (the :value handler decodes it back).
+        let feed = OPDSFeed.facetFeed(
+            title: "Series",
+            values: [("Sci-Fi/Adventure", 1)],
+            baseURL: "http://example.com",
+            href: "/opds/series"
+        )
+        #expect(feed.contains("href=\"http://example.com/opds/series/Sci-Fi%2FAdventure\""))
+    }
+
+    @Test
+    func paginationLinksUseTheFeedsOwnHref() {
+        let books = (0..<30).map { book(title: "Book \($0)") }
+        let page1 = OPDSFeed.booksFeed(title: "Newest", books: books, baseURL: "http://example.com", pageHref: "/opds/newest")
+        #expect(page1.contains("rel=\"next\" href=\"http://example.com/opds/newest?page=2\""))
+        #expect(!page1.contains("/opds/books?page="))
+
+        let page2 = OPDSFeed.booksFeed(title: "Newest", books: books, baseURL: "http://example.com", page: 2, pageHref: "/opds/newest")
+        #expect(page2.contains("rel=\"previous\" href=\"http://example.com/opds/newest?page=1\""))
+    }
 }

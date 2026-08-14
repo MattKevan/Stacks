@@ -319,4 +319,49 @@ struct ProtocolTests {
         let response = try await send(port, method: "GET", path: "/api/books/\(UUID().uuidString)/download")
         #expect(response.status == 404)
     }
+
+    @Test
+    func facetNavigationFeedsAreServed() async throws {
+        let port = try ServerTestHarness.freePort()
+        try await startServer(port: port)
+
+        // Seed a book exercising every facet dimension so each navigation
+        // feed has a real entry to list.
+        let bookID = UUID()
+        let commandID = UUID()
+        _ = try await send(
+            port, method: "POST",
+            path: "/api/stage?command=\(commandID.uuidString)&name=network.epub",
+            body: Data("bytes".utf8)
+        )
+        let pushed = try await send(
+            port, method: "POST", path: "/api/commands",
+            body: try ProtocolTests.isoEncoder.encode(SyncPushRequest(commands: [
+                ClientCommand(id: commandID, op: .addBook(.init(
+                    bookID: bookID, title: "Network", authors: ["Alice"],
+                    series: "Craft", seriesIndex: 1, tags: ["tech"], rating: nil, publisher: nil,
+                    publicationDate: nil, addedDate: .now, languages: [], identifiers: [:], comments: nil,
+                    formats: [.init(kind: "EPUB", filename: "network.epub", contentHash: "abc", size: 5, stagedName: "network.epub")],
+                    cover: nil
+                )))
+            ])))
+        #expect(pushed.status == 200)
+
+        let expectations: [(path: String, value: String)] = [
+            ("/opds/authors", "Alice"),
+            ("/opds/series", "Craft"),
+            ("/opds/tags", "tech"),
+            ("/opds/formats", "EPUB"),
+        ]
+        for (path, value) in expectations {
+            let response = try await send(port, method: "GET", path: path)
+            let body = String(decoding: response.data, as: UTF8.self)
+            #expect(response.status == 200, "\(path) must serve a navigation feed")
+            #expect(body.contains(value), "\(path) must list the seeded \(value)")
+            #expect(
+                body.contains("href=\"http://127.0.0.1:\(port)\(path)/\(value)\""),
+                "\(path) entries must link to their book feed"
+            )
+        }
+    }
 }

@@ -36,6 +36,42 @@ public enum OPDSFeed {
         """
     }
 
+    /// A navigation feed listing one facet dimension's values (authors,
+    /// series, tags, formats), each entry linking to the acquisition feed of
+    /// that value's books (`href` is the bare facet path, e.g.
+    /// `/opds/authors`; links append the percent-encoded value).
+    public static func facetFeed(
+        title: String,
+        values: [(value: String, count: Int)],
+        baseURL: String,
+        href: String,
+        updated: Date = .now
+    ) -> String {
+        let entries = values.map { value, count in
+            """
+            <entry>
+              <title>\(escape(value))</title>
+              <id>urn:uuid:00000000-0000-0000-0000-00000000\(slug("\(title)-\(value)"))</id>
+              <updated>\(iso(updated))</updated>
+              <content type="text">\(count) books</content>
+              <link rel="subsection" href="\(escape(baseURL))\(escape(href))/\(percentEncode(value))" type="\(acquisitionType)"/>
+            </entry>
+            """
+        }.joined(separator: "\n")
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">
+          <id>urn:uuid:00000000-0000-0000-0000-00000000\(slug(title))</id>
+          <title>\(escape(title))</title>
+          <updated>\(iso(updated))</updated>
+          <author><name>Book Manager</name></author>
+          <link rel="self" href="\(escape(baseURL))\(escape(href))" type="\(navigationType)"/>
+          <link rel="start" href="\(escape(baseURL))/opds" type="\(navigationType)"/>
+        \(entries)
+        </feed>
+        """
+    }
+
     /// An acquisition feed (books, facet values, search results) with
     /// pagination. `pageHref` is the path for page 1 (e.g. `/opds/books`);
     /// the query parameter carries the page.
@@ -53,13 +89,13 @@ public enum OPDSFeed {
         var links = ""
         if page > 1 {
             links += """
-              <link rel="previous" href="\(escape(baseURL))/opds/books?page=\(page - 1)" type="\(acquisitionType)"/>
+              <link rel="previous" href="\(escape(baseURL))\(escape(pageHref))?page=\(page - 1)" type="\(acquisitionType)"/>
 
             """
         }
         if hasNext {
             links += """
-              <link rel="next" href="\(escape(baseURL))/opds/books?page=\(page + 1)" type="\(acquisitionType)"/>
+              <link rel="next" href="\(escape(baseURL))\(escape(pageHref))?page=\(page + 1)" type="\(acquisitionType)"/>
 
             """
         }
@@ -128,6 +164,16 @@ public enum OPDSFeed {
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
             .replacingOccurrences(of: "'", with: "&apos;")
+    }
+
+    /// Percent-encodes a facet value for use as a single URL path segment.
+    /// Keeps only RFC 3986 unreserved characters — `.urlPathAllowed` would
+    /// leave "/" intact and break the route match for values containing it
+    /// (the `:value` handler decodes with `removingPercentEncoding`).
+    static func percentEncode(_ value: String) -> String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
     }
 
     private static func slug(_ value: String) -> String {

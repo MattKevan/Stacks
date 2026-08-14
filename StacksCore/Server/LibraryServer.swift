@@ -207,13 +207,23 @@ public actor LibraryServer {
             )
         }
 
-        for (route, facetType, title) in [
-            (RouterPath("opds/authors/:value"), FacetType.author, "Authors"),
-            (RouterPath("opds/series/:value"), FacetType.series, "Series"),
-            (RouterPath("opds/tags/:value"), FacetType.tag, "Tags"),
-            (RouterPath("opds/formats/:value"), FacetType.format, "Formats"),
+        for (path, facetType, title) in [
+            ("opds/authors", FacetType.author, "Authors"),
+            ("opds/series", FacetType.series, "Series"),
+            ("opds/tags", FacetType.tag, "Tags"),
+            ("opds/formats", FacetType.format, "Formats"),
         ] {
-            router.get(route) { request, context -> String in
+            // The navigation feed listing every value of the facet — the
+            // root feed links here, so a missing route 404s in readers.
+            router.get(RouterPath(path)) { request, _ -> String in
+                let values = try await repository.facetCounts(facetType)
+                return OPDSFeed.facetFeed(
+                    title: title, values: values,
+                    baseURL: "http://\(request.head.authority ?? "localhost")",
+                    href: "/\(path)"
+                )
+            }
+            router.get(RouterPath("\(path)/:value")) { request, context -> String in
                 guard let raw = context.parameters.get("value"),
                       let value = raw.removingPercentEncoding else {
                     throw HTTPError(.badRequest)
@@ -223,7 +233,7 @@ public actor LibraryServer {
                 return OPDSFeed.booksFeed(
                     title: "\(title): \(value)", books: books,
                     baseURL: "http://\(request.head.authority ?? "localhost")",
-                    page: page, pageHref: "\(route)"
+                    page: page, pageHref: "/\(path)/\(OPDSFeed.percentEncode(value))"
                 )
             }
         }
