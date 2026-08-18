@@ -89,6 +89,46 @@ struct ImportServiceTests {
     }
 
     @Test
+    func progressCallbackReportsPerFileAdvance() async throws {
+        let layout = try layout()
+        let service = ImportService(layout: layout)
+        let repository = MemoryRepository()
+        let epub = try Fixtures.makeEPUB(named: "progress-1.epub")
+        let pdf = try Fixtures.makePDF(named: "progress-2.pdf")
+
+        // The progress closure runs on the ImportService actor; the recorder
+        // is lock-protected (the RebuildCancelFlag pattern).
+        let recorder = CallRecorder()
+        _ = try await service.importFiles([epub, pdf], into: repository) { completed, total, title in
+            recorder.append(completed: completed, total: total, title: title)
+        }
+        let calls = recorder.calls
+
+        // Two calls per file: start (count so far) then finish (incremented).
+        #expect(calls.map(\.completed) == [0, 1, 1, 2])
+        #expect(calls.allSatisfy { $0.total == 2 })
+        #expect(calls.map(\.title) == ["progress-1.epub", "progress-1.epub", "progress-2.pdf", "progress-2.pdf"])
+    }
+
+    /// Lock-protected progress-call recorder for the callback test.
+    private final class CallRecorder: @unchecked Sendable {
+        private let lock = NSLock()
+        private var storage: [(completed: Int, total: Int, title: String?)] = []
+
+        func append(completed: Int, total: Int, title: String?) {
+            lock.lock()
+            defer { lock.unlock() }
+            storage.append((completed, total, title))
+        }
+
+        var calls: [(completed: Int, total: Int, title: String?)] {
+            lock.lock()
+            defer { lock.unlock() }
+            return storage
+        }
+    }
+
+    @Test
     func duplicateIndexIsBuiltOnceNotPerFile() async throws {
         let layout = try layout()
         let service = ImportService(layout: layout)

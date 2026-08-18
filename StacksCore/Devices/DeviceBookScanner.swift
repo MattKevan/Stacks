@@ -37,7 +37,11 @@ public struct DeviceBookRecord: Sendable, Equatable, Identifiable {
 /// link sleeps between operations — so browse uses `list` and the UI calls
 /// `enrich` only for the row the user selects.
 public struct DeviceBookScanner: Sendable {
-    private static let bookExtensions: Set<String> = ["mobi", "azw", "azw3", "epub", "pdf", "kfx", "prc", "txt"]
+    /// Ebook extensions plus the audiobook set (mp3/m4b/m4a/aac) — device
+    /// audiobooks list and import like any other book.
+    private static let bookExtensions: Set<String> =
+        Set(["mobi", "azw", "azw3", "epub", "pdf", "kfx", "prc", "txt"])
+        .union(AudioFormats.extensions)
 
     private let transport: any DeviceTransport
 
@@ -140,7 +144,7 @@ public struct DeviceBookScanner: Sendable {
                 isDRM: false,
                 isEnriched: true
             )
-        default: // kfx, prc, txt — filename-only listing (KFX shown as unsupported by the UI)
+        default: // kfx, prc, txt, audio — filename-only listing (KFX shown as unsupported by the UI)
             return DeviceBookRecord(
                 file: record.file, title: record.title, authors: [],
                 format: record.format, isDRM: false, isEnriched: true

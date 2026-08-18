@@ -56,9 +56,12 @@ public actor ImportService {
 
     public func importFiles(
         _ sourceURLs: [URL],
-        into repository: LibraryRepositoryImporting
+        into repository: LibraryRepositoryImporting,
+        progress: (@Sendable (Int, Int, String?) -> Void)? = nil
     ) async throws -> ImportReport {
         var items: [ImportItem] = []
+        var completed = 0
+        let total = sourceURLs.count
         // Build the normalized title|author → book index ONCE: the old per-file
         // `allBooksForDuplicateCheck()` materialized the entire catalog for
         // every file (O(files × catalog)). `createBook` upserts the catalog,
@@ -74,6 +77,14 @@ public actor ImportService {
             }
         }
         for source in sourceURLs {
+            // Progress is reported twice per file: the file starting (with the
+            // completed count so far), then after it is processed — whether
+            // imported, duplicated, or failed — with the incremented count.
+            progress?(completed, total, source.lastPathComponent)
+            defer {
+                completed += 1
+                progress?(completed, total, source.lastPathComponent)
+            }
             // MOBI/AZW/AZW3 sources convert to a temp EPUB first, then flow
             // through the standard EPUB path against the temp file. The report
             // item keeps the ORIGINAL source URL so the UI shows the MOBI file.

@@ -17,13 +17,18 @@ public struct BookBrowserModel: Sendable {
     public var searchText = ""
     public var facetNavigation = FacetNavigation()
     public var sortOrder: BookSortOrder = .name
+    /// Show only books that have an audiobook format (the Audiobooks sidebar
+    /// context). Composes with search; the Audiobooks context clears facet
+    /// selection, so facets are inactive while this is set.
+    public var audioOnly = false
 
     public init() {}
 
     /// Search + facet filtering applied client-side over the pulled books,
     /// then sorted. Facet filtering takes precedence over search text (a
     /// selected facet value narrows the category column, search is ignored
-    /// while one is active).
+    /// while one is active). The audiobook filter (when active) applies on
+    /// top of whichever of the two ran.
     public func books(from remoteBooks: [IndexedBook]) -> [IndexedBook] {
         let filtered: [IndexedBook]
         if let facet = facetNavigation.activeFacet {
@@ -44,11 +49,14 @@ public struct BookBrowserModel: Sendable {
                     || ($0.series?.lowercased().contains(query) ?? false)
             }
         }
+        let audiobooks = audioOnly
+            ? filtered.filter { $0.formats.contains { AudioFormats.isAudio($0.kind) } }
+            : filtered
         switch sortOrder {
         case .name:
-            return filtered.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            return audiobooks.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
         case .dateAdded:
-            return filtered.sorted { ($0.addedMilliseconds ?? 0) > ($1.addedMilliseconds ?? 0) }
+            return audiobooks.sorted { ($0.addedMilliseconds ?? 0) > ($1.addedMilliseconds ?? 0) }
         }
     }
 }

@@ -69,7 +69,7 @@ format version.
 Other library commands:
 
 ```bash
-stacks import <library> <book-file>...      # add books (EPUB/PDF/DJVU/MOBI)
+stacks import <library> <book-file>...      # add books (EPUB/PDF/DJVU/MOBI/audio)
 stacks enrich <library>                     # fetch missing authors/tags online
 stacks list <library> [--sort name|date] [--author NAME]
 stacks search <library> <query>

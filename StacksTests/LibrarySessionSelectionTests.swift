@@ -82,4 +82,85 @@ struct LibrarySessionSelectionTests {
 
         #expect(session.activeRemoteID == nil)
     }
+
+    // MARK: - Audiobooks context
+
+    @Test
+    func audiobooksSelectionExitsDeviceAndRemote() async throws {
+        let (session, connection) = try await makeSession()
+        defer { connection.stop() }
+        session.selectedDeviceID = UUID()
+        session.selectCategory(.author)
+
+        // Sidebar click on the Audiobooks row: home becomes the browser
+        // context and the audiobooks filter turns on.
+        session.selectAudiobooks()
+
+        #expect(session.selectedDeviceID == nil)
+        #expect(session.activeRemoteID == nil)
+        #expect(session.activeLibraryID == session.home?.id)
+        #expect(connection.isShowingAudiobooks)
+        // The facet middle column is hidden in this mode.
+        #expect(connection.facetNavigation.category == nil)
+    }
+
+    @Test
+    func categorySelectionExitsAudiobooks() async throws {
+        let (session, connection) = try await makeSession()
+        defer { connection.stop() }
+        session.selectAudiobooks()
+
+        // Any category click (including All Books, type nil) leaves the
+        // audiobooks view.
+        session.selectCategory(.format)
+
+        #expect(!connection.isShowingAudiobooks)
+        #expect(connection.facetNavigation.category == .format)
+    }
+
+    @Test
+    func deviceSelectionExitsAudiobooks() async throws {
+        let (session, connection) = try await makeSession()
+        defer { connection.stop() }
+        session.selectAudiobooks()
+
+        session.selectDevice(UUID())
+
+        #expect(!connection.isShowingAudiobooks)
+    }
+
+    @Test
+    func audiobooksFiltersBooksToAudioFormats() async throws {
+        let (session, connection) = try await makeSession()
+        defer { connection.stop() }
+        // One ebook and one audiobook, staged with real files so their
+        // formats carry the right kinds.
+        let epubURL = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).epub")
+        try Data("epub".utf8).write(to: epubURL)
+        defer { try? FileManager.default.removeItem(at: epubURL) }
+        let audioURL = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).m4b")
+        try Data("audio".utf8).write(to: audioURL)
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+
+        let epubStaged = try await connection.coreRepository.stageFile(from: epubURL)
+        try await connection.coreRepository.createBook(
+            metadata: NewBookMetadata(title: "Ebook Only"), staged: [epubStaged], cover: nil
+        )
+        let audioStaged = try await connection.coreRepository.stageFile(from: audioURL)
+        try await connection.coreRepository.createBook(
+            metadata: NewBookMetadata(title: "Audio Book"), staged: [audioStaged], cover: nil
+        )
+
+        connection.isShowingAudiobooks = true
+        await connection.refreshBooks()
+
+        #expect(connection.books.map(\.title) == ["Audio Book"])
+
+        // All Books still shows both.
+        connection.isShowingAudiobooks = false
+        await connection.refreshBooks()
+        #expect(connection.books.map(\.title).sorted() == ["Audio Book", "Ebook Only"])
+    }
 }

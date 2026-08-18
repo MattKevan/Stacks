@@ -49,6 +49,22 @@ struct DeviceBookScannerTests {
     }
 
     @Test
+    func listIncludesAudiobookFiles() async throws {
+        let transport = MockTransport()
+        await transport.add(fileNamed: "Audiobook.m4b", data: Data("x".utf8))
+        await transport.add(fileNamed: "Chapter 1.mp3", data: Data("y".utf8))
+        await transport.add(fileNamed: "song.flac", data: Data("z".utf8))
+        await transport.add(fileNamed: ".DS_Store", data: Data("w".utf8))
+
+        let records = try await DeviceBookScanner(transport: transport)
+            .list(in: documents)
+
+        // m4b/mp3 list as books; flac stays outside the audiobook set.
+        #expect(records.map(\.format).sorted() == ["M4B", "MP3"])
+        #expect(await transport.downloadedNames.isEmpty)
+    }
+
+    @Test
     func enrichFillsMetadataFromFixture() async throws {
         let transport = MockTransport()
         let mobiURL = try mobiFixtureURL()

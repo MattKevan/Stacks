@@ -9,6 +9,10 @@ struct MetadataExtractorTests {
         #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.epub")) == .epub)
         #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.pdf")) == .pdf)
         #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.djvu")) == .djvu)
+        #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.mp3")) == .mp3)
+        #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.m4b")) == .m4b)
+        #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.m4a")) == .m4a)
+        #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.aac")) == .aac)
         #expect(MetadataExtractor.kind(for: URL(fileURLWithPath: "/tmp/x.txt")) == nil)
     }
 

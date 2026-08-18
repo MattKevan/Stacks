@@ -86,10 +86,14 @@ struct ContentView: View {
         .fileImporter(
             isPresented: $session.isPickerPresented,
             allowedContentTypes: session.pickerAction == .addBooks
-                ? [.epub, .pdf, .data,
-                   UTType(filenameExtension: "mobi") ?? .data,
-                   UTType(filenameExtension: "azw") ?? .data,
-                   UTType(filenameExtension: "azw3") ?? .data]
+                // Book formats the import pipeline accepts: ebooks (with the
+                // MOBI family), audiobooks from the shared AudioFormats set,
+                // and .data as the safety net (some extensions resolve to no
+                // UTType on older systems). Explicit audiobook types keep the
+                // picker from greying out mp3/m4b/m4a/aac files.
+                ? [.epub, .pdf, .data]
+                    + AudioFormats.extensions.compactMap { UTType(filenameExtension: $0) }
+                    + ["mobi", "azw", "azw3"].compactMap { UTType(filenameExtension: $0) }
                 : [.folder],
             allowsMultipleSelection: true,
             onCompletion: { result in
@@ -484,10 +488,12 @@ extension ContentView {
     /// site) keeps the toolbar from jumping between states.
     @ViewBuilder
     /// Whether anything is running or queued (calibre import, server
-    /// transfer, device send). Idle → the button is a disabled checkmark.
+    /// transfer, device send, local file import). Idle → the button is a
+    /// disabled checkmark.
     private var hasActivity: Bool {
         session.calibreActivity != nil
             || session.serverTransferActivity != nil
+            || session.importActivity != nil
             || session.devices.currentActivity != nil
             || session.devices.pendingCount > 0
     }
@@ -500,6 +506,8 @@ extension ContentView {
         if let activity = session.calibreActivity {
             progressGlyph(activity.progress)
         } else if let activity = session.serverTransferActivity {
+            progressGlyph(activity.progress)
+        } else if let activity = session.importActivity {
             progressGlyph(activity.progress)
         } else if let activity = session.devices.currentActivity {
             progressGlyph(activity.progress)
@@ -851,6 +859,10 @@ private struct ActivityPopover: View {
                 serverTransferRow(activity)
                 Divider()
             }
+            if let activity = session.importActivity {
+                importActivityRow(activity)
+                Divider()
+            }
             // Device connection state lives in the sidebar; the popover only
             // shows live activity.
             if let activity = session.devices.currentActivity {
@@ -939,6 +951,31 @@ private struct ActivityPopover: View {
                             .foregroundStyle(.red)
                             .lineLimit(1)
                     }
+                }
+            }
+        }
+    }
+
+    /// Live local file import: headline + progress and the file being
+    /// processed — same shape as the server-transfer row.
+    private func importActivityRow(_ activity: ImportActivity) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "square.and.arrow.down")
+                .foregroundStyle(.secondary)
+            if let progress = activity.progress {
+                ProgressView(value: progress)
+                    .frame(width: 90)
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(activity.title)
+                if let currentTitle = activity.currentTitle {
+                    Text(currentTitle)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
         }

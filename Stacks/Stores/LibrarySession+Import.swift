@@ -2,6 +2,20 @@ import AppKit
 import StacksCore
 import Foundation
 
+/// Live per-file progress for a local file import — the toolbar activity
+/// popover's Safari-Downloads style row.
+struct ImportActivity: Equatable {
+    let completed: Int
+    let total: Int
+    let currentTitle: String?
+
+    var progress: Double? {
+        total > 0 ? Double(completed) / Double(total) : nil
+    }
+
+    var title: String { "Importing books" }
+}
+
 /// Live Calibre activity surfaced in the toolbar activity popover — the scan
 /// phases while the source is read, then per-book import progress with the
 /// current book and the last outcome. Enough detail to see the import is
@@ -76,18 +90,30 @@ extension LibrarySession {
 
     /// File > Import Books and the toolbar Add Books button land in the
     /// library that is currently active — home in device mode, since device
-    /// selection clears the browser context.
+    /// selection clears the browser context. Per-file progress shows in the
+    /// toolbar activity popover; the completion notification posts from
+    /// `presentImportReport`.
     func importFiles(urls: [URL]) async {
         guard let target = activeLibrary else { return }
         let repository = target.coreRepository
         let service = ImportService(layout: .init(root: repository.root))
+        importActivity = ImportActivity(completed: 0, total: urls.count, currentTitle: nil)
         do {
-            importReport = try await service.importFiles(urls, into: repository)
+            importReport = try await service.importFiles(urls, into: repository) { [weak self] completed, total, title in
+                // ImportService is an actor; the progress hop lands back on
+                // the main actor for the popover binding.
+                Task { @MainActor [weak self] in
+                    self?.importActivity = ImportActivity(
+                        completed: completed, total: total, currentTitle: title
+                    )
+                }
+            }
         } catch {
             importReport = ImportReport(items: [
                 ImportItem(sourceURL: urls.first ?? URL(fileURLWithPath: "/"), kind: .epub, status: .failed(error.localizedDescription))
             ])
         }
+        importActivity = nil
         await target.refreshAll()
         // Enrich freshly imported books that are missing authors/tags, when
         // the preference is on. Runs off the import's critical path so the

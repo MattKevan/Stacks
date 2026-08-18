@@ -7,11 +7,13 @@ import SwiftUI
 /// The selectable rows under a connected remote's disclosure group.
 enum RemoteSubsection: Hashable {
     case allBooks
+    case audiobooks
     case category(FacetType)
 }
 
 enum SidebarItem: Hashable {
     case allBooks
+    case audiobooks
     case category(FacetType)
     case remote(UUID, RemoteSubsection)
     case device(UUID)
@@ -30,6 +32,9 @@ struct SidebarView: View {
                 // pre-network peers: clicking it shows its books while home
                 // stays open underneath.
                 if let remote = session.activeRemote {
+                    if remote.isShowingAudiobooks {
+                        return .remote(remote.id, .audiobooks)
+                    }
                     if let category = remote.facetNavigation.category {
                         return .remote(remote.id, .category(category))
                     }
@@ -39,8 +44,11 @@ struct SidebarView: View {
                     return .device(id)
                 }
                 // The browser context is the active library: rows map to
-                // `.allBooks`/`.category`.
+                // `.allBooks`/`.audiobooks`/`.category`.
                 guard let library = session.activeLibrary else { return .allBooks }
+                if library.isShowingAudiobooks {
+                    return .audiobooks
+                }
                 if let category = library.facetNavigation.category {
                     return .category(category)
                 }
@@ -50,6 +58,8 @@ struct SidebarView: View {
                 switch item {
                 case .allBooks:
                     session.selectCategory(nil)
+                case .audiobooks:
+                    session.selectAudiobooks()
                 case let .category(category):
                     session.selectCategory(category)
                 case let .remote(id, subsection):
@@ -63,7 +73,12 @@ struct SidebarView: View {
                         switch subsection {
                         case .allBooks:
                             remote.facetNavigation.clear()
+                            remote.isShowingAudiobooks = false
+                        case .audiobooks:
+                            remote.facetNavigation.clear()
+                            remote.isShowingAudiobooks = true
                         case let .category(category):
+                            remote.isShowingAudiobooks = false
                             remote.facetNavigation.selectCategory(category)
                         }
                     }
@@ -77,6 +92,8 @@ struct SidebarView: View {
             Section("Library") {
                 Label("All Books", systemImage: "books.vertical")
                     .tag(SidebarItem.allBooks)
+                Label("Audiobooks", systemImage: "headphones")
+                    .tag(SidebarItem.audiobooks)
                 ForEach(SidebarView.libraryCategories, id: \.self) { category in
                     Label(category.displayName, systemImage: category.sidebarSymbol)
                         .tag(SidebarItem.category(category))
@@ -129,6 +146,8 @@ struct SidebarView: View {
                     // facet subsections; eject disconnects but the server
                     // stays listed (reconnectable) while it advertises.
                     DisclosureGroup {
+                        Label("Audiobooks", systemImage: "headphones")
+                            .tag(SidebarItem.remote(browser.id, .audiobooks))
                         ForEach(SidebarView.libraryCategories, id: \.self) { category in
                             Label(category.displayName, systemImage: category.sidebarSymbol)
                                 .tag(SidebarItem.remote(browser.id, .category(category)))

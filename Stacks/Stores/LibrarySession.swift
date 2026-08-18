@@ -149,6 +149,9 @@ final class LibrarySession {
     private var _connectToServerPresented = false
     /// Live upload/download progress for the toolbar activity popover.
     var serverTransferActivity: ServerTransferActivity?
+    /// Live per-file progress for a local file import (toolbar activity
+    /// popover); nil when no import is running.
+    var importActivity: ImportActivity?
 
     /// The current browser surface: the remote when connected, else the
     /// active library. Grid/table/facet views are generic over it.
@@ -226,6 +229,7 @@ final class LibrarySession {
             activeLibraryID = nil
             activeRemoteID = nil
             activeLibrary?.facetNavigation.clear()
+            connection?.isShowingAudiobooks = false
         }
         Task { await devices.select(id) }
     }
@@ -383,6 +387,7 @@ final class LibrarySession {
         state = .welcome
         inspectorPresented = false
         importReport = nil
+        importActivity = nil
         metadataCandidates = []
         metadataReviewPresented = false
         metadataLookupError = nil
@@ -498,6 +503,16 @@ final class LibrarySession {
         activeRemoteID = nil
         devices.selectedDeviceID = nil
         connection?.selectCategory(type)
+    }
+
+    /// Sidebar click on the Audiobooks row: like `selectCategory`, makes home
+    /// the browser context and exits remote/device mode, then switches home
+    /// into the audiobooks-only view.
+    func selectAudiobooks() {
+        activeLibraryID = home?.id
+        activeRemoteID = nil
+        devices.selectedDeviceID = nil
+        connection?.showAudiobooks()
     }
     func restore(id: UUID) async { await connection?.restore(id: id) }
     func open(id: UUID) async { await connection?.open(id: id) }

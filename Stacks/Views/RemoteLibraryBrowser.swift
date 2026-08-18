@@ -37,6 +37,13 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         set { model.facetNavigation = newValue }
     }
 
+    /// The Audiobooks context: filters the pulled snapshot to books with an
+    /// audiobook format (core `BookBrowserModel.audioOnly`).
+    var isShowingAudiobooks: Bool {
+        get { model.audioOnly }
+        set { model.audioOnly = newValue }
+    }
+
     /// Search text for the client-side filter.
     var searchText: String {
         get { model.searchText }
@@ -220,8 +227,12 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     }
 
     func open(id: UUID) async {
-        guard let book = await remote.book(id: id),
-              let format = book.formats.first else { return }
+        guard let book = await remote.book(id: id) else { return }
+        // Mixed-format books open their audiobook from the Audiobooks context.
+        let format = (isShowingAudiobooks
+            ? book.formats.first(where: { AudioFormats.isAudio($0.kind) })
+            : nil) ?? book.formats.first
+        guard let format else { return }
         do {
             let url = try await remote.downloadFormat(id: id, format: format.kind.lowercased())
             NSWorkspace.shared.open(url)
@@ -262,6 +273,7 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     }
 
     func selectCategory(_ type: FacetType?) {
+        model.audioOnly = false
         facetNavigation.selectCategory(type)
         Task { await refreshBooks() }
     }

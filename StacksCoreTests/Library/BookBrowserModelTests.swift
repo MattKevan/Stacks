@@ -194,6 +194,46 @@ struct BookBrowserModelTests {
         #expect(result.map(\.title) == ["Newest", "Oldest", "No Date"])
     }
 
+    // MARK: - Audiobooks
+
+    @Test
+    func audioOnlyKeepsOnlyAudiobookFormats() {
+        var model = BookBrowserModel()
+        model.audioOnly = true
+        let books = [
+            makeBook(title: "Range", formats: [format("M4B")]),
+            makeBook(title: "Deep Work", formats: [format("EPUB")]),
+            makeBook(title: "Both", formats: [format("EPUB"), format("MP3")]),
+        ]
+
+        let result = model.books(from: books)
+
+        // EPUB-only books drop out; mixed-format books stay (they have an
+        // audiobook). Format matching is case-insensitive.
+        #expect(result.map(\.title).sorted() == ["Both", "Range"])
+    }
+
+    @Test
+    func audioOnlyComposesWithSearch() {
+        var model = BookBrowserModel()
+        model.audioOnly = true
+        model.searchText = "deep"
+        let books = [
+            makeBook(title: "Deep Work", formats: [format("EPUB")]),
+            makeBook(title: "Deep Audio", formats: [format("M4B")]),
+        ]
+
+        let result = model.books(from: books)
+
+        #expect(result.map(\.title) == ["Deep Audio"])
+    }
+
+    @Test
+    func audioOnlyDefaultsToOff() {
+        let books = [makeBook(title: "Deep Work", formats: [format("EPUB")])]
+        #expect(BookBrowserModel().books(from: books).map(\.title) == ["Deep Work"])
+    }
+
     // MARK: - Facet / search interaction
 
     @Test

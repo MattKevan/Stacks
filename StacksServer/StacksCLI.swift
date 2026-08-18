@@ -278,7 +278,7 @@ struct ImportCalibre: AsyncParsableCommand {
 
 struct Import: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Import book files (EPUB/PDF/DJVU/MOBI) into a library."
+        abstract: "Import book files (EPUB/PDF/DJVU/MOBI/MP3/M4B/M4A/AAC) into a library."
     )
 
     @Argument(help: "Path to the library (created if missing)")

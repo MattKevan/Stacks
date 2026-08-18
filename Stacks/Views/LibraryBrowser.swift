@@ -25,6 +25,10 @@ protocol LibraryBrowser: AnyObject {
     var isMarqueeSelecting: Bool { get set }
     var isLibraryUnavailable: Bool { get }
     var facetNavigation: FacetNavigation { get set }
+    /// True when the browser shows only audiobooks (the Audiobooks sidebar
+    /// context). The sidebar routes on it; each conformer filters its book
+    /// list to audiobook formats while it's set.
+    var isShowingAudiobooks: Bool { get set }
     var authors: [(value: String, count: Int)] { get }
     var series: [(value: String, count: Int)] { get }
     var tags: [(value: String, count: Int)] { get }

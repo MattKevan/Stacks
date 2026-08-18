@@ -3,7 +3,7 @@
 Stacks is an open source Mac-native ebook manager with a Mac/Linux headless server, all in
 the same Swift codebase. Features include:
 
-- Store and search EPUB/PDF/DJVU/MOBI books by keyword author, series, tag and format.
+- Store and search EPUB/PDF/DJVU/MOBI books and audiobooks (MP3/M4B/M4A/AAC) by keyword author, series, tag and format.
 - Fetch missing metadata and covers.
 - Share libraries over a local network, with automatic Bonjour/avahi discovery.
 - Import existing Calibre libraries.

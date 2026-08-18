@@ -11,6 +11,10 @@ public enum FormatKind: String, Sendable {
     case epub = "EPUB"
     case pdf = "PDF"
     case djvu = "DJVU"
+    case mp3 = "MP3"
+    case m4b = "M4B"
+    case m4a = "M4A"
+    case aac = "AAC"
 }
 
 public struct ExtractedMetadata: Equatable, Sendable {
@@ -56,6 +60,10 @@ public enum MetadataExtractor {
         case "epub": return .epub
         case "pdf": return .pdf
         case "djvu", "djv": return .djvu
+        case "mp3": return .mp3
+        case "m4b": return .m4b
+        case "m4a": return .m4a
+        case "aac": return .aac
         default: return nil
         }
     }
@@ -68,6 +76,8 @@ public enum MetadataExtractor {
             return extractPDF(from: url)
         case .djvu:
             return extractFromFilename(url)
+        case .mp3, .m4b, .m4a, .aac:
+            return extractAudio(from: url)
         }
     }
 
@@ -83,6 +93,14 @@ public enum MetadataExtractor {
             #endif
         case .djvu:
             return nil
+        case .mp3, .m4b, .m4a, .aac:
+            #if canImport(AVFoundation)
+            return extractAudioCover(from: url)
+            #else
+            // Linux has no AVFoundation, so audio covers are unavailable — the
+            // import degrades to no cover, matching the EPUB/PDF Linux paths.
+            return nil
+            #endif
         }
     }
 
@@ -240,9 +258,12 @@ public enum MetadataExtractor {
         )
     }
 
-    // MARK: - DJVU and fallback
+    // MARK: - DJVU, audio and fallback
 
-    private static func extractFromFilename(_ url: URL) -> ExtractedMetadata {
+    /// Filename-based metadata (title from the stem) — the shared fallback for
+    /// DJVU, audio files on Linux, and tag-less documents. Internal so the
+    /// audio extractor in `MetadataExtractor+Audio.swift` reuses it.
+    static func extractFromFilename(_ url: URL) -> ExtractedMetadata {
         ExtractedMetadata(title: url.deletingPathExtension().lastPathComponent)
     }
 
@@ -277,7 +298,9 @@ public enum MetadataExtractor {
     private static let maxExtractableEntrySize: Int64 = 64 << 20
 
 #if canImport(ImageIO)
-    private static func normalizeToJPEG(_ data: Data) -> Data? {
+    /// Re-encodes image data as JPEG — the shared cover-normalization path for
+    /// EPUB and audio covers. Internal so the audio extractor reuses it.
+    static func normalizeToJPEG(_ data: Data) -> Data? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
             return nil

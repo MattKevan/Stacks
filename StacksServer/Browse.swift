@@ -294,7 +294,7 @@ struct Browse: AsyncParsableCommand {
         for path in args {
             let url = URL(fileURLWithPath: path)
             guard let kind = MetadataExtractor.kind(for: url) else {
-                Self.stderr("\(path): unsupported file type (EPUB/PDF/DJVU)")
+                Self.stderr("\(path): unsupported file type (EPUB/PDF/DJVU/MP3/M4B/M4A/AAC)")
                 continue
             }
             guard let data = try? Data(contentsOf: url) else {

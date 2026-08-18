@@ -36,6 +36,10 @@ final class LibraryConnection {
     var deletedBooks: [IndexedBook] = []
     var missingFiles: [(book: IndexedBook, filename: String)] = []
     var facetNavigation = FacetNavigation()
+    /// True while the Audiobooks sidebar context is active: the book list is
+    /// filtered to books that have an audiobook format and the facet middle
+    /// column is hidden (facet selection stays cleared in this mode).
+    var isShowingAudiobooks = false
     /// Toolbar sort order; re-sorts the loaded books immediately on change.
     var sortOrder: BrowserSortOrder = .name {
         didSet {
@@ -160,20 +164,28 @@ final class LibraryConnection {
 
     func refreshBooks() async {
         do {
+            let result: [IndexedBook]
             if let facet = facetNavigation.activeFacet {
-                books = try await coreRepository.books(facetType: facet.type, value: facet.value)
+                result = try await coreRepository.books(facetType: facet.type, value: facet.value)
             } else if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                books = try await coreRepository.books()
+                result = try await coreRepository.books()
             } else {
                 // A malformed FTS5 query (unclosed quote, stray operator) must not
                 // take down the loaded browser: on a search error, show no results
                 // while keeping the library state intact.
                 do {
-                    books = try await coreRepository.search(searchText)
+                    result = try await coreRepository.search(searchText)
                 } catch {
                     books = []
+                    sortBooks()
+                    return
                 }
             }
+            // The Audiobooks context narrows whatever the base query returned
+            // (all books or search matches) to books with an audio format.
+            books = isShowingAudiobooks
+                ? result.filter { $0.formats.contains { AudioFormats.isAudio($0.kind) } }
+                : result
         } catch {
             onLoadFailure?(error.localizedDescription)
         }
@@ -207,9 +219,26 @@ final class LibraryConnection {
     /// Sidebar click on a facet category (Authors/Series/Tags/Formats).
     /// `nil` selects All Books. Selecting any library view deselects a
     /// connected device — the two selection domains are mutually exclusive.
+    /// Any category click also exits the Audiobooks context (All Books and
+    /// the categories are one domain; Audiobooks is its own view).
     func selectCategory(_ type: FacetType?) {
         onSelectionChange?()
+        isShowingAudiobooks = false
         facetNavigation.selectCategory(type)
+        Task { await refreshBooks() }
+    }
+
+    /// Sidebar click on the Audiobooks row: filters the book list to books
+    /// with an audio format and clears any facet selection (the facet middle
+    /// column hides for this view). The reverse transition — clicking any
+    /// category or All Books — exits via `selectCategory`.
+    func showAudiobooks(_ show: Bool = true) {
+        onSelectionChange?()
+        guard show != isShowingAudiobooks else { return }
+        isShowingAudiobooks = show
+        if show {
+            facetNavigation.clear()
+        }
         Task { await refreshBooks() }
     }
 
@@ -281,7 +310,14 @@ final class LibraryConnection {
 
     func open(id: UUID) async {
         do {
-            guard let url = try await coreRepository.formatFileURL(id: id) else { return }
+            guard let book = try await coreRepository.book(id: id) else { return }
+            var url = try await coreRepository.formatFileURL(id: id)
+            // Mixed-format books (ebook + audiobook) open the audio file from
+            // the Audiobooks context — the view is about listening.
+            if isShowingAudiobooks, let audioURL = audioFormatFileURL(for: book) {
+                url = audioURL
+            }
+            guard let url else { return }
             NSWorkspace.shared.open(url)
         } catch {
             onError?(error.localizedDescription)
@@ -300,10 +336,30 @@ final class LibraryConnection {
     /// The first existing format file for a book, used to make library rows
     /// draggable (drag onto a device row sends that file). Computed directly
     /// from the layout (pure path math, mirrors `BookFolder.formatFileURL`) so
-    /// the synchronous drag handler needs no actor hop.
+    /// the synchronous drag handler needs no actor hop. In the Audiobooks
+    /// context the audio file is preferred (a mixed-format book drags its
+    /// audiobook).
     func formatFileURL(for book: IndexedBook) -> URL? {
+        if isShowingAudiobooks, let url = audioFormatFileURL(for: book) {
+            return url
+        }
         let root = LibraryLayout(root: coreRepository.root).root
         for format in book.formats {
+            let url = root
+                .appending(path: book.relativePath, directoryHint: .isDirectory)
+                .appending(path: format.filename)
+            if FileManager.default.fileExists(atPath: url.path) {
+                return url
+            }
+        }
+        return nil
+    }
+
+    /// The first existing audiobook format file for a book, or nil when it
+    /// has none on disk.
+    private func audioFormatFileURL(for book: IndexedBook) -> URL? {
+        let root = LibraryLayout(root: coreRepository.root).root
+        for format in book.formats where AudioFormats.isAudio(format.kind) {
             let url = root
                 .appending(path: book.relativePath, directoryHint: .isDirectory)
                 .appending(path: format.filename)
