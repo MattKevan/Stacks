@@ -1,7 +1,9 @@
 .worktrees/
 .DS_Store
 .build/
+.vscode/
 /build/
+dist/
 DerivedData/
 xcuserdata/
 *.xcuserstate

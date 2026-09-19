@@ -112,7 +112,7 @@ Options (see `stacks serve --help`):
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--port <port>` | `8080` | Listen port |
+| `--port <port>` | `18080` | Listen port |
 | `--user <user>` | — | Require this username (with `--password`) |
 | `--password <pass>` | — | Password for `--user` |
 | `--name <name>` | folder name | Display name (advertisement/diagnostics) |
@@ -134,7 +134,7 @@ Notes:
   host:port.
 - **Auth**: `--user alice --password secret` gates every endpoint with HTTP
   basic auth. The macOS app prompts for credentials and remembers them.
-- **Firewall**: open the port (`sudo ufw allow 8080`).
+- **Firewall**: open the port (`sudo ufw allow 18080`).
 - **One writer per library**: never run a second server (or the macOS app
   with the same library open) against the same library directory — the
   journal supports exactly one writer.
@@ -144,7 +144,7 @@ Notes:
 systemd **does not use your shell PATH**, so `ExecStart` needs the absolute
 binary path (wherever you installed it) and the absolute library path —
 `$HOME`/`~` are not expanded. Pick a port that is free on your box (if
-something already owns 8080, like a Docker proxy, use another).
+something already owns 18080, like a Docker proxy, use another).
 
 ```
 # /etc/systemd/system/stacks-server.service
@@ -177,14 +177,14 @@ restart the service to pick it up: `sudo systemctl restart stacks-server`.
 # → Library ID, format version, journal seq, book counts
 
 # Protocol check (anonymous)
-curl http://<host>:8080/api/sync?after=0
+curl http://<host>:18080/api/sync?after=0
 # → {"seq":0,"commands":[]}  (or the addBook commands after an import)
 
 # Protocol check (auth required)
-curl -u alice:secret http://<host>:8080/api/sync?after=0
+curl -u alice:secret http://<host>:18080/api/sync?after=0
 
 # Download a book's format (id from a sync pull)
-curl -o book.epub http://<host>:8080/api/books/<id>/download?format=EPUB
+curl -o book.epub http://<host>:18080/api/books/<id>/download?format=EPUB
 ```
 
 ### Connect from the macOS app

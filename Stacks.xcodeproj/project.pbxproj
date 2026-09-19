@@ -332,7 +332,7 @@
 		440737F7CDCA961DA25EEABC /* USBDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USBDevice.swift; sourceTree = "<group>"; };
 		452BAE4FBBB7E4F1F99C0496 /* AvahiAdvertiser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvahiAdvertiser.swift; sourceTree = "<group>"; };
 		464F5A2FFC2CA1A1CE362F64 /* FacetNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FacetNavigationTests.swift; sourceTree = "<group>"; };
-		47E662E0590799F9F80EBCB8 /* fixture.mobi */ = {isa = PBXFileReference; path = fixture.mobi; sourceTree = "<group>"; };
+		47E662E0590799F9F80EBCB8 /* fixture.mobi */ = {isa = PBXFileReference; lastKnownFileType = file; path = fixture.mobi; sourceTree = "<group>"; };
 		4FA91017A09CBBC270E6FA05 /* QueryCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryCommands.swift; sourceTree = "<group>"; };
 		50354CF07122CF0F77600E51 /* DeviceImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceImportService.swift; sourceTree = "<group>"; };
 		51F7875A060BA56F4C22F3EC /* CalibreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibreModels.swift; sourceTree = "<group>"; };
@@ -386,7 +386,7 @@
 		8E89BE550CAE6520CF099915 /* TextNormalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalization.swift; sourceTree = "<group>"; };
 		8F75CA16BA19CA192099D848 /* CalibreImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibreImportService.swift; sourceTree = "<group>"; };
 		8FB6E76A05DE68ABB59765F2 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
-		929D6895D6A2AC58730D0679 /* StacksServer */ = {isa = PBXFileReference; includeInIndex = 0; path = StacksServer; sourceTree = BUILT_PRODUCTS_DIR; };
+		929D6895D6A2AC58730D0679 /* StacksServer */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text; path = StacksServer; sourceTree = BUILT_PRODUCTS_DIR; };
 		92CA9F3A179E1CF519A952E3 /* Browse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Browse.swift; sourceTree = "<group>"; };
 		93C7782E1D7FBF0CEA7FC8F7 /* Fixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fixtures.swift; sourceTree = "<group>"; };
 		9400C60BA09EACA6C41BD5B3 /* JournalRebuildTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalRebuildTests.swift; sourceTree = "<group>"; };
@@ -441,7 +441,7 @@
 		E2F42247B252B6CA0433014A /* LocalCatalogV2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalCatalogV2Tests.swift; sourceTree = "<group>"; };
 		E34B9691A23FFCB01D129847 /* CoverThumbnailerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverThumbnailerTests.swift; sourceTree = "<group>"; };
 		E3A6889EA8D99727BDFDE6BB /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
-		E5100C337E3858E1F20A35C6 /* LICENSE */ = {isa = PBXFileReference; path = LICENSE; sourceTree = "<group>"; };
+		E5100C337E3858E1F20A35C6 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		E61625A94C7F07131F7D1D06 /* LibraryWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryWelcomeView.swift; sourceTree = "<group>"; };
 		E6387A44406952F5AB67F8E7 /* GoogleBooksSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleBooksSource.swift; sourceTree = "<group>"; };
 		E8823EB686BEB9A55B9A64C2 /* LocalDeviceCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDeviceCacheTests.swift; sourceTree = "<group>"; };
@@ -1194,10 +1194,6 @@
 					8DC03021322DD9FC09DE08E2 = {
 						TestTargetID = EF4B4EF847A00F8B4A5A40AE;
 					};
-					EF4B4EF847A00F8B4A5A40AE = {
-						DevelopmentTeam = N7J3BYZ94H;
-						ProvisioningStyle = Automatic;
-					};
 				};
 			};
 			buildConfigurationList = 467952A8A1F582DB9F21315A /* Build configuration list for PBXProject "Stacks" */;
@@ -1519,6 +1515,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/Stacks.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1529,9 +1526,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppSleepDisabled = YES;
-				INFOPLIST_KEY_NSBonjourServices = (
-					_stacks._tcp,
-				);
+				INFOPLIST_KEY_NSBonjourServices = _stacks._tcp;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Stacks discovers and shares book libraries on your local network.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1540,6 +1535,7 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.new-industries.Stacks";
 				PRODUCT_NAME = Stacks;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1647,6 +1643,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Config/Stacks.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1657,9 +1654,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppSleepDisabled = YES;
-				INFOPLIST_KEY_NSBonjourServices = (
-					_stacks._tcp,
-				);
+				INFOPLIST_KEY_NSBonjourServices = _stacks._tcp;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Stacks discovers and shares book libraries on your local network.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1770,8 +1765,9 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.new-industriestkevan.StacksServer";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.new-industries.StacksServer";
 				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
 			};
 			name = Release;
 		};
@@ -1864,8 +1860,9 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.new-industriestkevan.StacksServer";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.new-industries.StacksServer";
 				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
 			};
 			name = Debug;
 		};

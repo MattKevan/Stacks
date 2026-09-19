@@ -72,6 +72,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_ENTITLEMENTS: Config/Stacks.entitlements
         CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
         DEVELOPMENT_TEAM: N7J3BYZ94H
         # Hardened runtime is required for Developer ID notarization. Keep the
         # hardened-runtime-compatible resource entitlements (network.client,
@@ -141,8 +142,11 @@ targets:
       - StacksServer
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.new-industriestkevan.StacksServer
+        PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.StacksServer
         GENERATE_INFOPLIST_FILE: YES
+        # This helper is a separately built tool, not part of the app archive.
+        # Keeping it out lets Xcode treat the archive as a distributable app.
+        SKIP_INSTALL: YES
     dependencies:
       - target: StacksCore
       - package: swift-argument-parser

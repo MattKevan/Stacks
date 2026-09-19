@@ -37,7 +37,7 @@ final class AppSettings {
     static let requireSharePasswordDefault = false
     static let shareUsernameKey = "shareUsername"
     static let sharePortKey = "sharePort"
-    static let sharePortDefault = 8080
+    static let sharePortDefault = 18080
     static let shareOPDSOverNetworkKey = "shareOPDSOverNetwork"
     static let shareOPDSOverNetworkDefault = true
 
@@ -109,8 +109,8 @@ final class AppSettings {
         }
     }
 
-    /// The port the shared server binds (8080 default; change it when
-    /// another service already holds 8080). The OPDS catalog shares this
+    /// The port the shared server binds (18080 default; change it when
+    /// another service already holds 18080). The OPDS catalog shares this
     /// port (one server, one listener).
     var sharePort: Int {
         get { _sharePort }

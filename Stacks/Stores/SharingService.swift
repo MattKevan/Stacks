@@ -17,7 +17,7 @@ final class SharingService {
     private var server: LibraryServer?
 
     /// The port the active server binds (set at start; drives the copy-URL).
-    private var port = 8080
+    private var port = 18080
     /// The feature flags of the running server; start() restarts when a
     /// caller toggles OPDS/sync while the server is already up.
     private var serveSync = true
@@ -81,12 +81,12 @@ final class SharingService {
     }
 
     /// The OPDS catalog address for OTHER devices on the network
-    /// (e.g. `http://MattBook-Air.local:8080/opds`) — the URL a reader enters.
+    /// (e.g. `http://MattBook-Air.local:18080/opds`) — the URL a reader enters.
     var opdsAddressString: String {
         addressString + "/opds"
     }
 
-    /// The LAN address clients connect to, e.g. `http://MattBook-Air.local:8080`.
+    /// The LAN address clients connect to, e.g. `http://MattBook-Air.local:18080`.
     /// Uses the Bonjour-registered local hostname — other devices on the
     /// network resolve it as `<hostname>.local` over mDNS, which is exactly
     /// how they'd discover the server anyway. Falls back to `localhost`

@@ -76,14 +76,14 @@ Options (see `stacks serve --help`):
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--port <port>` | `8080` | Listen port |
+| `--port <port>` | `18080` | Listen port |
 | `--user <user>` | — | Require this username (with `--password`) |
 | `--password <pass>` | — | Password for `--user` |
 | `--name <name>` | folder name | Display name (advertisement/diagnostics) |
 | `--indexes <dir>` | see below | Catalog indexes directory |
 | `--no-bonjour` | off | Do not advertise the library |
 
-By default stacks uses port 8080, so if something is already using that you can pick any other free port.
+By default stacks uses port 18080, so if something is already using that you can pick any other free port.
 
 ### systemd (optional)
 
@@ -108,7 +108,7 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload && sudo systemctl enable --now stacks-server
-sudo ufw allow 8080 (or other selected port)
+sudo ufw allow 18080 (or other selected port)
 ```
 
 After re-installing a rebuilt binary (`install … ~/.local/bin/stacks`),

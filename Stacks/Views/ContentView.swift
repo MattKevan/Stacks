@@ -734,7 +734,7 @@ private struct ConnectToServerView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var host = ""
-    @State private var port = "8080"
+    @State private var port = "18080"
     @State private var username = ""
     @State private var password = ""
     @State private var connecting = false

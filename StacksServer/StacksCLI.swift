@@ -326,7 +326,7 @@ struct Serve: AsyncParsableCommand {
     var path: String
 
     @Option(name: .shortAndLong, help: "Port to listen on")
-    var port: Int = 8080
+    var port: Int = 18080
 
     @Option(name: .long, help: "Require this username (with --password)")
     var user: String?
