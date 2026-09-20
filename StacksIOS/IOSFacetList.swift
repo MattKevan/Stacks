@@ -72,8 +72,9 @@ struct IOSFacetValueDetail: View {
     let value: String
 
     var body: some View {
-        IOSGridDetail(session: session)
-            .navigationTitle(value)
+        // Titled with the value, not the library: `IOSGridDetail` sets
+        // `browser.name` itself, which would otherwise override this.
+        IOSGridDetail(session: session, title: value)
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 // Set, not toggle. `FacetNavigation.selectValue` toggles when

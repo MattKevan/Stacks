@@ -293,6 +293,10 @@ private struct IOSTargetDetail: View {
 /// opens the file, since it has a right-hand inspector and a double-click).
 struct IOSGridDetail: View {
     @Bindable var session: LibrarySession
+    /// Overrides the navigation title. Nil means the browser's name (the
+    /// library for All Books/Audiobooks). A facet value passes its own name, so
+    /// a filtered shelf is titled with the value rather than the library.
+    var title: String?
     @State private var searchText = ""
     /// Routed by id (`IndexedBook` is not Hashable) — resolved against the
     /// browser's live list, so a metadata edit re-renders the same screen.
@@ -311,7 +315,7 @@ struct IOSGridDetail: View {
         Group {
             if let browser = session.browser {
                 CoverGridView(browser: browser, session: session)
-                    .navigationTitle(browser.name)
+                    .navigationTitle(title ?? browser.name)
                     // `.automatic` (the default) puts the field *under* the
                     // large title, scrolling with it. Forcing
                     // `.navigationBarDrawer(displayMode: .always)` kept it
