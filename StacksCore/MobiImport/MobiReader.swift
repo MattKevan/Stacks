@@ -1,3 +1,7 @@
+// libmobi is LGPL-3.0-or-later. Linking it into an App Store build carries
+// a relink obligation the Mac's Developer ID distribution does not, so MOBI
+// support is compiled out on Apple mobile (see ImportService.prepare).
+#if canImport(libmobi)
 import Foundation
 import libmobi
 
@@ -259,3 +263,4 @@ public struct MobiReader: Sendable {
             | Int(data[offset + 2]) << 8 | Int(data[offset + 3])
     }
 }
+#endif

@@ -48,6 +48,8 @@ public actor ImportService {
     private let folder: BookFolder
 
     /// MOBI-family extensions converted to EPUB before the standard pipeline.
+    /// Accepted on every platform so the *reason* for a rejection is explicit;
+    /// only platforms with the converter actually convert (see `prepare`).
     private static let mobiExtensions: Set<String> = ["mobi", "azw", "azw3"]
 
     public init(layout: LibraryLayout) {
@@ -204,6 +206,7 @@ public actor ImportService {
                 temporaryDirectory: nil
             )
         }
+        #if canImport(libmobi)
         do {
             let content = try MobiReader(url: source).extract()
             let epubData = try MobiToEpubConverter.convert(content)
@@ -231,14 +234,35 @@ public actor ImportService {
                 temporaryDirectory: nil
             )
         }
+        #else
+        // No MOBI converter on this platform (Apple mobile): libmobi is
+        // LGPL-3.0-or-later, and static-linking it into an App Store build
+        // carries an obligation the Mac's Developer ID distribution does not.
+        // Rejecting with a reason beats a confusing "unreadable file".
+        return PreparedSource(
+            url: source,
+            kind: nil,
+            fallbackTitle: nil,
+            cover: nil,
+            failureMessage: Self.mobiUnsupportedMessage,
+            temporaryDirectory: nil
+        )
+        #endif
     }
+
+    /// Shown when a MOBI-family file arrives on a platform without the
+    /// converter.
+    static let mobiUnsupportedMessage =
+        "Kindle (MOBI) files aren’t supported on this device — import an EPUB or PDF instead."
 
     /// A clear per-item failure message: DRM-protected MOBI files get an
     /// explicit reason instead of the generic error description.
     private static func message(for error: Error) -> String {
+        #if canImport(libmobi)
         if case MobiReaderError.drmProtected = error {
             return "DRM-protected book"
         }
+        #endif
         return error.localizedDescription
     }
 

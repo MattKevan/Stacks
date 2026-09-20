@@ -113,6 +113,9 @@ public struct DeviceBookScanner: Sendable {
 
         switch ext {
         case "mobi", "azw", "azw3":
+            // The device layer is macOS-only, where libmobi is always linked;
+            // the guard keeps the file explicit about its dependency.
+            #if canImport(libmobi)
             do {
                 let content = try MobiReader(url: localURL).extract()
                 return DeviceBookRecord(
@@ -134,6 +137,14 @@ public struct DeviceBookScanner: Sendable {
                     format: record.format, isDRM: false, isEnriched: true
                 )
             }
+            #else
+            // No libmobi (Apple mobile). The device layer never runs there, so
+            // this is only here to keep the dependency explicit.
+            return DeviceBookRecord(
+                file: record.file, title: record.title, authors: [],
+                format: record.format, isDRM: false, isEnriched: false
+            )
+            #endif
         case "epub", "pdf":
             let kind = MetadataExtractor.kind(for: localURL)
             let extracted = kind.flatMap { try? MetadataExtractor.extract(from: localURL, kind: $0) }

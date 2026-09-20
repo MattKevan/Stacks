@@ -50,18 +50,9 @@ struct IOSRootView: View {
                 let scoped = urls.filter { $0.startAccessingSecurityScopedResource() }
                 defer { scoped.forEach { $0.stopAccessingSecurityScopedResource() } }
                 await session.importFiles(urls: urls)
-                session.presentImportReport()
-            }
-        }
-        // Import feedback. macOS routes this through notifications + the
-        // inspector; a sheet is the right affordance on iOS, where the user is
-        // already looking at the screen that just changed.
-        .sheet(isPresented: Binding(
-            get: { session.importReport != nil },
-            set: { presented in if !presented { session.importReport = nil } }
-        )) {
-            if let report = session.importReport {
-                IOSImportReportView(report: report) { session.importReport = nil }
+                // Completion is a system notification, not a sheet: the user
+                // is usually elsewhere by the time a batch finishes.
+                await session.notifyImportCompletion()
             }
         }
         // The same connection dialogs the Mac uses (StacksUI).
@@ -73,6 +64,20 @@ struct IOSRootView: View {
         }
         .sheet(isPresented: $isConnectingToServer) {
             ConnectToServerView(session: session)
+        }
+        // Errors a notification might have missed (denied authorization, a
+        // failed download) land here — the backstop for notification-only
+        // feedback.
+        .alert(
+            "Something Went Wrong",
+            isPresented: Binding(
+                get: { session.lastError != nil },
+                set: { presented in if !presented { session.lastError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { session.lastError = nil }
+        } message: {
+            Text(session.lastError ?? "")
         }
     }
 
@@ -362,54 +367,6 @@ private struct IOSSharedSection: View {
             .filter { library in
                 !session.remotes.contains { $0.id == library.id }
             }
-    }
-}
-
-/// The result of an import: the one-line summary plus the files that failed or
-/// were already in the library.
-private struct IOSImportReportView: View {
-    let report: ImportReport
-    let onDone: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Label(
-                    report.summary,
-                    systemImage: report.failed.isEmpty
-                        ? "checkmark.circle"
-                        : "exclamationmark.triangle"
-                )
-                if !report.failed.isEmpty {
-                    Section("Couldn’t Import") {
-                        ForEach(report.failed, id: \.sourceURL) { item in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.sourceURL.lastPathComponent)
-                                if case let .failed(message) = item.status {
-                                    Text(message)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
-                if !report.duplicates.isEmpty {
-                    Section("Already in the Library") {
-                        ForEach(report.duplicates, id: \.sourceURL) { item in
-                            Text(item.sourceURL.lastPathComponent)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Import")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: onDone)
-                }
-            }
-        }
     }
 }
 

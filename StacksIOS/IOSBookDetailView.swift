@@ -119,7 +119,8 @@ struct IOSBookDetailView: View {
                 id: book.id, format: format.kind.lowercased()
             )
             await session.importFiles(urls: [url])
-            session.presentImportReport()
+            // Notified, not sheeted: same feedback path as a picker import.
+            await session.notifyImportCompletion()
         } catch {
             remote.noteUnreachable(error)
             statusMessage = "Download failed: \(error.localizedDescription)"

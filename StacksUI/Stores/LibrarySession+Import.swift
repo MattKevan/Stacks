@@ -138,6 +138,22 @@ extension LibrarySession {
         }
     }
 
+    /// Import feedback as a system notification, with no in-app sheet. Used by
+    /// iOS, where the user has usually moved on by the time a batch finishes.
+    ///
+    /// A notification can be missed (denied authorization, brief banner), so
+    /// failures also land in `lastError`, which the shell surfaces. The report
+    /// itself stays on the session for anything that wants to read it.
+    func notifyImportCompletion() async {
+        guard let report = importReport else { return }
+        let delivered = await SystemNotifier.postImportCompletion(report: report)
+        if !delivered, !report.failed.isEmpty {
+            let names = report.failed.prefix(3).map { $0.sourceURL.lastPathComponent }
+            let more = report.failed.count > 3 ? "…" : ""
+            lastError = "Couldn't import: \(names.joined(separator: ", "))\(more)"
+        }
+    }
+
     // Send-to-device lives in the macOS shell (`MacFeatures.swift`): it needs
     // the device store, which the shared session deliberately lacks.
 

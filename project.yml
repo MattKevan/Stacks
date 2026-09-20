@@ -156,6 +156,11 @@ targets:
         product: StacksKit
       - package: StacksPackage
         product: StacksSync
+      # Deliberately NO libmobi: it is LGPL-3.0-or-later, and static-linking it
+      # into an App Store build carries a relink obligation. StacksKit compiles
+      # its MOBI converter out where libmobi is absent (canImport(libmobi)), so
+      # iOS rejects .mobi/.azw with a clear message instead. The Mac keeps full
+      # MOBI support.
 
   StacksCoreTests:
     type: bundle.unit-test

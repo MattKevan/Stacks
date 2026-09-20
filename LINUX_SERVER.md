@@ -6,9 +6,13 @@ the macOS Stacks app or other `stacks`/`RemoteLibrary` instances — push
 commands and pull records; the server serializes them and never merges.
 
 Same Swift codebase as the app. The root `Package.swift` builds only the
-server-facing subset (Journal, Library, Persistence, Server, Calibre import),
-so a plain `swift build` works on macOS, Linux arm64 (Raspberry Pi 4/5,
-64-bit OS), and Linux x86_64.
+server-facing subset — `StacksKit` (journal, library, persistence, import,
+metadata) and `StacksServerKit` (server, OPDS, Bonjour/Avahi), plus the
+`stacks` executable — so a plain `swift build` works on macOS, Linux arm64
+(Raspberry Pi 4/5, 64-bit OS), and Linux x86_64.
+
+The macOS-only device layer (`StacksDevices`, MTP over IOUSBHost) is a
+separate XcodeGen target and is not part of this build.
 
 ## Prerequisites
 

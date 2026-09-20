@@ -1,3 +1,6 @@
+// Pairs with MobiReader: converts extracted MOBI content to EPUB. Compiled
+// out alongside it where libmobi is unavailable (Apple mobile).
+#if canImport(libmobi)
 #if canImport(CryptoKit)
 import CryptoKit
 #else
@@ -256,3 +259,4 @@ public enum MobiToEpubConverter {
             .replacingOccurrences(of: "\"", with: "&quot;")
     }
 }
+#endif

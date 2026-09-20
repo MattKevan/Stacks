@@ -72,11 +72,22 @@ xcodebuild \
 
 ## Archive layout
 
-The `Stacks` scheme builds the app, the embedded `StacksCore` framework, and
-the `StacksServer` helper. Only the app belongs in the distributable app
-archive:
+The build is split across a Swift package and a few XcodeGen targets:
 
-- `StacksCore` has `SKIP_INSTALL=YES` because it is embedded in the app.
+| Target | Kind | Defined in |
+|---|---|---|
+| `StacksKit` / `StacksSync` / `StacksServerKit` | package libraries | `Package.swift` (shared with the Linux build) |
+| `StacksServer` | tool | `project.yml`, plus a package executable product |
+| `StacksDevices` | macOS framework | `project.yml` — MTP over IOUSBHost, macOS-only |
+| `Stacks` / `StacksIOS` | apps | `project.yml` |
+
+`StacksUI` is a shared **source directory**, not a target: it is compiled into
+both app targets, so the shared views need no `public` access annotations.
+
+The `Stacks` scheme builds the app, the `StacksDevices` framework, and the
+`StacksServer` helper. Only the app belongs in the distributable app archive:
+
+- `StacksDevices` is embedded in the app.
 - `StacksServer` has `SKIP_INSTALL=YES` because it is a separate helper tool,
   not part of the DMG.
 
