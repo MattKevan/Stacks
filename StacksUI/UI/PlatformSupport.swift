@@ -173,6 +173,37 @@ public extension View {
 }
 
 public extension View {
+    /// Fixed sheet width where sheets have a width (macOS); a no-op inside an
+    /// iOS sheet, which sizes itself to the device.
+    @ViewBuilder
+    func platformSheetWidth(_ width: CGFloat) -> some View {
+        #if os(macOS)
+        self.frame(width: width)
+        #else
+        self
+        #endif
+    }
+
+    /// Return/Escape key equivalents. macOS only — iOS sheets use the keyboard
+    /// accessory the system provides.
+    @ViewBuilder
+    func defaultActionShortcut() -> some View {
+        #if os(macOS)
+        self.keyboardShortcut(.defaultAction)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func cancelActionShortcut() -> some View {
+        #if os(macOS)
+        self.keyboardShortcut(.cancelAction)
+        #else
+        self
+        #endif
+    }
+
     /// Grid-tile tap behaviour. macOS follows Finder (double-click opens,
     /// single click selects); touch platforms open on a single tap — the
     /// discoverable idiom there. Selection stays available on iOS through the

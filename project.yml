@@ -124,6 +124,10 @@ targets:
     sources:
       - StacksIOS
       - StacksUI
+      # The same Icon Composer bundle the Mac app uses. Xcode 26 compiles a
+      # top-level `AppIcon.icon` into the platform icon (icns/Assets.car) with
+      # no extra build setting.
+      - path: Stacks/AppIcon.icon
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.Stacks

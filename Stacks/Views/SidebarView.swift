@@ -129,20 +129,15 @@ struct SidebarView: View {
         .listStyle(.sidebar)
     }
 
-    /// LAN libraries advertised over Bonjour, Finder-style: click to connect
-    /// (the server is the single writer; edits happen server-side), the
-    /// connected one shows an eject.
+    /// LAN libraries advertised over Bonjour. The rows live in StacksUI
+    /// (`SharedLibrariesView`) so iOS renders the same information; here they
+    /// carry sidebar selection tags (the disclosure of facet subsections) and
+    /// a whole-row tap sets the browser context.
     private struct SharedLibrariesSection: View {
         @Bindable var session: LibrarySession
 
         var body: some View {
-            let libraries = session.discovery.libraries.sorted {
-                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
             Section("Shared") {
-                // The connected remote is a selectable browser context —
-                // home stays open underneath, exactly like the pre-network
-                // peers.
                 ForEach(session.remotes) { browser in
                     // A disclosure group, like the pre-network peers: the
                     // header selects the remote (All Books) and toggles the
@@ -156,42 +151,13 @@ struct SidebarView: View {
                                 .tag(SidebarItem.remote(browser.id, .category(category)))
                         }
                     } label: {
-                        HStack(spacing: 6) {
-                            Label {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(browser.name)
-                                    if !browser.isConnected {
-                                        Text("Disconnected")
-                                            .font(.caption2)
-                                            .foregroundStyle(.orange)
-                                    }
-                                }
-                            } icon: {
-                                Image(systemName: browser.isConnected ? "network" : "network.slash")
-                                    .foregroundStyle(browser.isConnected ? Color.primary : Color.orange)
-                            }
-                            Spacer()
-                            PendingBadge(browser: browser)
-                            Button {
-                                session.disconnectRemote(browser.id)
-                            } label: {
-                                Image(systemName: "eject.fill")
-                            }
-                            .buttonStyle(.borderless)
-                            .help("Disconnect from \(browser.name)")
+                        RemoteRowLabel(browser: browser) {
+                            session.disconnectRemote(browser.id)
                         }
                     }
                     .tag(SidebarItem.remote(browser.id, .allBooks))
                 }
-                if libraries.isEmpty && session.remotes.isEmpty {
-                    Text(session.discovery.browseError == nil
-                        ? "Browsing for libraries on this network…"
-                        : "Local Network access is off")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(libraries.filter { library in
-                    !session.remotes.contains { $0.id == library.id }
-                }) { library in
+                ForEach(unconnectedDeferredToStacksUI) { library in
                     Button {
                         Task { await session.connect(to: library) }
                     } label: {
@@ -203,32 +169,17 @@ struct SidebarView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                if let error = session.discovery.browseError {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
         }
-    }
 
-    /// The offline-queue badge on the connected Shared row: how many edits are
-    /// queued until the server is reachable again.
-    private struct PendingBadge: View {
-        let browser: RemoteLibraryBrowser
-        @State private var count = 0
-
-        var body: some View {
-            Group {
-                if count > 0 {
-                    Text("\(count) pending")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        /// Discovered libraries not already connected (connected ones are the
+        /// disclosure rows above).
+        private var unconnectedDeferredToStacksUI: [DiscoveredLibrary] {
+            session.discovery.libraries
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+                .filter { library in
+                    !session.remotes.contains { $0.id == library.id }
                 }
-            }
-            .task {
-                count = await browser.pendingCount()
-            }
         }
     }
 
