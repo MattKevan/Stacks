@@ -408,14 +408,12 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         guard let data = try? await remote.downloadCover(id: book.id), !data.isEmpty else {
             return nil
         }
-        // Downsample through the same ImageIO pipeline as local covers
-        // (CoverDecoder on macOS = high-quality thumbnail decode). Loading
-        // the full-res bytes and letting SwiftUI single-pass downscale them
-        // aliases into moire/grain — the local path's clarity came from this
-        // step. Falls back to the raw image if the decode fails.
-        let image = CoverDecoder.decode(data: data, maxPixelSize: Self.coverPixelSize)
-            .flatMap { PlatformImage(data: $0) }
-            ?? PlatformImage(data: data)
+        // Downsample OFF the main actor. `CoverDecoder.decode` is a synchronous
+        // ImageIO downsample + PNG re-encode, and this class is @MainActor, so
+        // running it here blocked the main thread once per tile as the grid
+        // scrolled — the cause of judder on remote libraries, where every tile
+        // needs a fetch+decode. Byte-sized input, so the hop is cheap.
+        let image = await Self.decodeCover(data)
         guard let image else { return nil }
         coverCache.setObject(image, forKey: book.id.uuidString as NSString)
         // Persist for the next launch. Fire-and-forget: the decode path must
@@ -427,6 +425,37 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
             await Self.diskCoverCache.store(bytes, for: bookID, serverID: serverID)
         }
         return image
+    }
+
+    /// Decodes cover bytes to a display image off the main actor.
+    ///
+    /// `nonisolated` so it runs on the cooperative pool rather than the main
+    /// thread: the decode is CPU-bound (ImageIO downsample + re-encode), and a
+    /// grid scrolling through a remote shelf decodes on every tile appearance.
+    ///
+    /// Sized to the tile, not the source: the iOS grid renders covers at
+    /// roughly 256 physical pixels, so decoding to 640 wasted both the decode
+    /// and the per-frame resample. macOS keeps the larger size because its
+    /// covers scale with the window.
+    private nonisolated static func decodeCover(_ data: Data) async -> PlatformImage? {
+        let pixelSize = await Self.coverDecodePixelSize
+        return await Task.detached(priority: .userInitiated) {
+            let decoded = CoverDecoder.decode(data: data, maxPixelSize: pixelSize)
+                .flatMap { PlatformImage(data: $0) }
+            return decoded ?? PlatformImage(data: data)
+        }.value
+    }
+
+    /// Longest edge to decode a cover at: the tile's rendered size, with
+    /// headroom, rather than the source resolution.
+    private static var coverDecodePixelSize: Int {
+        #if os(iOS)
+        // ~85pt tiles at @3x, doubled for margin (a larger device or a
+        // future single-column layout).
+        256
+        #else
+        640
+        #endif
     }
 
     /// On-disk cover cache, shared by every remote browser.

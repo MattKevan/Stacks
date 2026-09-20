@@ -356,12 +356,16 @@ private struct CoverTile: View {
         // (same book.id, new hash) refreshes the tile instead of showing the
         // old image until it scrolls away.
         //
-        // Remote books have NO cover hash — the sync protocol streams journal
-        // commands and never a hash — so the key must stay stable for them
-        // rather than being a second nil. `id` is the stable fallback: local
-        // tiles still react to a changed hash, remote tiles load once.
+        // The id fallback covers books without a cover hash (the sync protocol
+        // carries one, but a book genuinely may have no cover image): keying on
+        // nil alone would leave the task unkeyed, so local tiles still react to
+        // a changed hash while hashless tiles load once.
         .task(id: book.coverHash ?? "id:\(book.id)") {
-            image = await browser.coverImage(for: book)
+            // Scrolling past a tile cancels this task; don't publish a decode
+            // for a tile that has already left the screen.
+            let loaded = await browser.coverImage(for: book)
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
     }
 
@@ -407,9 +411,13 @@ private struct CoverTile: View {
         if let image {
             Image(platformImage: image)
                 .resizable()
-                // High-quality interpolation: the default medium filter
-                // aliases (moire) when downscaling patterned covers.
-                .interpolation(.high)
+                // `.medium` (the default) rather than `.high`: high-quality
+                // interpolation resamples the bitmap on every frame during a
+                // scroll, which judders on iOS where each tile also had to
+                // fetch. It was compensating for oversized source images;
+                // covers are now decoded near their rendered size, so there is
+                // little left to resample and medium is indistinguishable.
+                .interpolation(.medium)
                 .scaledToFit()
         } else {
             // A real cover fills the column width at its own aspect ratio;
