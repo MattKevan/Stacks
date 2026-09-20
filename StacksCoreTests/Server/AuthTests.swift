@@ -4,7 +4,9 @@ import FoundationNetworking
 #endif
 import Hummingbird
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 @Suite
 struct AuthTests {

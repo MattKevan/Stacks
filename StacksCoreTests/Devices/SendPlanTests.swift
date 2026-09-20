@@ -1,6 +1,9 @@
 import Foundation
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
+@testable import StacksDevices
 
 @Suite
 struct SendPlanTests {

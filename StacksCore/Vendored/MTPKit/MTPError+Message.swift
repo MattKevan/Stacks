@@ -1,6 +1,6 @@
 import Foundation
 
-/// Localized lookup. Vendored into BookManagerCore, so the SwiftPM-only
+/// Localized lookup. Vendored into StacksCore, so the SwiftPM-only
 /// `Bundle.module` is unavailable; `Bundle.main` falls back to the key itself,
 /// i.e. English strings (the app is English-only).
 func loc(_ key: String, _ args: CVarArg...) -> String {

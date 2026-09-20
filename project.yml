@@ -10,6 +10,12 @@ configs:
   Release: release
 
 packages:
+  # The portable code (StacksKit / StacksSync / StacksServerKit) is defined once
+  # in Package.swift and consumed here by path — the same definitions the Linux
+  # CLI builds from. Only the targets that must be an app bundle or an
+  # IOKit-linked framework stay declared in this file.
+  StacksPackage:
+    path: .
   GRDB:
     url: https://github.com/groue/GRDB.swift.git
     exactVersion: 7.11.1
@@ -36,29 +42,22 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "26.0"
 
 targets:
-  StacksCore:
+  # The macOS-only device layer (MTP over IOUSBHost). Deliberately not in the
+  # SwiftPM package: it links IOKit, never builds for Linux, and will never be
+  # part of the iOS app.
+  StacksDevices:
     type: framework
     platform: macOS
     sources:
-      - path: StacksCore
-        # Clibz is a SwiftPM-only system-library shim (module map + header for
-        # the Linux PNG decoder branch, which never compiles in the macOS app).
-        # Excluding it keeps xcodegen from generating a Headers build phase for
-        # shim.h.
-        excludes:
-          - Clibz
+      - path: StacksCore/Devices
+      - path: StacksCore/Vendored
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.StacksCore
+        PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.StacksDevices
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
-      - package: GRDB
-      - package: ZIPFoundation
-      - package: libmobi-swift
-        product: libmobi
-      - package: Hummingbird
-      - package: swift-service-lifecycle
-        product: ServiceLifecycle
+      - package: StacksPackage
+        product: StacksKit
 
   Stacks:
     type: application
@@ -102,7 +101,13 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: >-
           public.app-category.productivity
     dependencies:
-      - target: StacksCore
+      - target: StacksDevices
+      - package: StacksPackage
+        product: StacksKit
+      - package: StacksPackage
+        product: StacksSync
+      - package: StacksPackage
+        product: StacksServerKit
 
   StacksCoreTests:
     type: bundle.unit-test
@@ -115,7 +120,13 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
-      - target: StacksCore
+      - target: StacksDevices
+      - package: StacksPackage
+        product: StacksKit
+      - package: StacksPackage
+        product: StacksSync
+      - package: StacksPackage
+        product: StacksServerKit
       - package: GRDB
       - package: ZIPFoundation
       - package: libmobi-swift
@@ -148,7 +159,12 @@ targets:
         # Keeping it out lets Xcode treat the archive as a distributable app.
         SKIP_INSTALL: YES
     dependencies:
-      - target: StacksCore
+      - package: StacksPackage
+        product: StacksKit
+      - package: StacksPackage
+        product: StacksSync
+      - package: StacksPackage
+        product: StacksServerKit
       - package: swift-argument-parser
         product: ArgumentParser
 
@@ -168,7 +184,7 @@ schemes:
     build:
       targets:
         Stacks: all
-        StacksCore: all
+        StacksDevices: all
         StacksServer: all
         StacksCoreTests: [test]
         StacksUITests: [test]

@@ -1,7 +1,13 @@
 import Foundation
-import Hummingbird
+import StacksKit
 
 /// The sync protocol's wire models. A client command is a `JournalCommand`
+/// without the server-assigned `seq`/`ts`; the server assigns both on ingest
+/// and dedupes by `id`.
+///
+/// These are plain `Codable` values so the client never links a server
+/// framework; `StacksServerKit` adds the `ResponseEncodable` conformances it
+/// needs to return them (see `SyncResponseConformances.swift`).
 /// without the server-assigned `seq`/`ts`; the server assigns both on ingest
 /// and dedupes by `id`.
 public struct ClientCommand: Sendable, Codable, Equatable {
@@ -17,7 +23,7 @@ public struct ClientCommand: Sendable, Codable, Equatable {
 /// `GET /api/identity` — server + library identity, used by manual
 /// host:port connections (no Bonjour TXT to carry the id/name) to validate
 /// the server and adopt its real display name.
-public struct LibraryIdentity: Sendable, Codable, Equatable, ResponseEncodable {
+public struct LibraryIdentity: Sendable, Codable, Equatable {
     public let id: UUID
     public let name: String
     /// The library file format version (journal layout).
@@ -31,7 +37,7 @@ public struct LibraryIdentity: Sendable, Codable, Equatable, ResponseEncodable {
 }
 
 /// `GET /api/sync?after=<seq>` — the pull. `seq` is the client's next cursor.
-public struct SyncPullResponse: Sendable, Codable, Equatable, ResponseEncodable {
+public struct SyncPullResponse: Sendable, Codable, Equatable {
     public let seq: Int64
     public let commands: [JournalCommand]
 
@@ -50,7 +56,7 @@ public struct SyncPushRequest: Sendable, Codable, Equatable {
     }
 }
 
-public struct SyncPushResponse: Sendable, Codable, Equatable, ResponseEncodable {
+public struct SyncPushResponse: Sendable, Codable, Equatable {
     /// Seq assigned to each applied command (in push order; duplicates are
     /// skipped and contribute nothing).
     public let applied: [Int64]
@@ -60,6 +66,11 @@ public struct SyncPushResponse: Sendable, Codable, Equatable, ResponseEncodable 
     public struct CommandError: Sendable, Codable, Equatable {
         public let index: Int
         public let message: String
+
+        public init(index: Int, message: String) {
+            self.index = index
+            self.message = message
+        }
     }
 
     public init(applied: [Int64], errors: [CommandError]) {
@@ -71,7 +82,7 @@ public struct SyncPushResponse: Sendable, Codable, Equatable, ResponseEncodable 
 /// `POST /api/stage?command=<id>&name=<stagedName>` with the raw file body —
 /// the server places the bytes at `staging/<commandID>/<stagedName>` so the
 /// referencing `addBook`/`setCover` command can materialize them.
-public struct StageResponse: Sendable, Codable, Equatable, ResponseEncodable {
+public struct StageResponse: Sendable, Codable, Equatable {
     public let stagedName: String
     public let size: Int64
 

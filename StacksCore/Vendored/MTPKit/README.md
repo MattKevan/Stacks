@@ -1,8 +1,8 @@
-# Vendored MTPKit (inlined into BookManagerCore)
+# Vendored MTPKit (inlined into StacksCore)
 
 MTPKit is the pure-Swift MTP-over-USB stack (native IOUSBHost — no libusb, no
 libmtp) used by the app's device backend. It is **vendored directly into the
-BookManagerCore target** (no Swift package) so the build is self-contained:
+StacksCore target** (no Swift package) so the build is self-contained:
 Xcode 26 (beta) mishandles local path packages (it recreates
 `.swiftpm/xcode` metadata inside the package on every open and fails to load
 it as a project, plus intermittent "Missing package product" errors). Inlining
@@ -26,11 +26,11 @@ repo's precedent of vendoring libmobi's C sources.
    still skipping Apple devices (vendor `0x05AC`).
 2. **`DeviceTransport` renamed → `MTPDeviceTransport`**
    (`DeviceTransport.swift`, `MTPTransport.swift`): MTPKit's own transport
-   protocol collided with BookManagerCore's app-facing `DeviceTransport`
+   protocol collided with StacksCore's app-facing `DeviceTransport`
    protocol. All other MTPKit types (`StorageInfo`, `FileNode`,
    `TransportError`, `DeviceChange`, `TransferProgress`, `TransportKind`,
    `ProgressHandler`) keep their upstream names — verified no collisions in
-   BookManagerCore.
+   StacksCore.
 3. **`Bundle.module` replaced with `Bundle.main`** (`MTPError+Message.swift`):
    `Bundle.module` is SwiftPM-only and does not exist in an XcodeGen target.
    Localized error strings now fall back to the English key (the app is

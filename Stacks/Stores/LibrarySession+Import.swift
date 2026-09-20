@@ -1,5 +1,8 @@
 import AppKit
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import Foundation
 
 /// Live per-file progress for a local file import — the toolbar activity
@@ -139,66 +142,8 @@ extension LibrarySession {
         }
     }
 
-    // MARK: - Send to device
-
-    /// Resolves each selected book's best stored format file (in the selected
-    /// device's format-priority order) and sends them to the device. Books
-    /// with no supported stored format get an explicit "no compatible format"
-    /// row in the send report.
-    func sendSelectionToDevice() async {
-        guard let repository = connection?.repository else { return }
-        let folder = BookFolder(layout: .init(root: repository.root))
-        let selectedBooks = books.filter { selection.contains($0.id) }
-        var requests: [SendRequest] = []
-        var noCompatible: [SendItem] = []
-        for book in selectedBooks {
-            var hasSupportedFormat = false
-            for format in devices.selectedDevice?.profile.supportedFormats ?? [] {
-                guard let record = book.formats.first(where: { $0.kind.lowercased() == format }) else {
-                    continue
-                }
-                let url = await folder.formatFileURL(relativePath: book.relativePath, filename: record.filename)
-                if FileManager.default.fileExists(atPath: url.path) {
-                    requests.append(SendRequest(title: book.title, authors: book.authors, sourceURL: url, format: format))
-                    hasSupportedFormat = true
-                    break
-                }
-            }
-            if !hasSupportedFormat {
-                noCompatible.append(SendItem(title: book.title, status: .noCompatibleFormat))
-            }
-        }
-        await devices.send(requests, noCompatible: noCompatible)
-    }
-
-    /// Sends files dropped onto a sidebar device row (Finder-style drag). Each
-    /// URL is sent as-is when its extension is a format the device accepts;
-    /// unsupported formats surface as "no compatible format" in the report.
-    func sendFiles(urls: [URL]) async {
-        var requests: [SendRequest] = []
-        for url in urls {
-            let format = url.pathExtension.lowercased()
-            guard !format.isEmpty else { continue }
-            requests.append(SendRequest(
-                title: url.deletingPathExtension().lastPathComponent,
-                sourceURL: url,
-                format: format
-            ))
-        }
-        await devices.send(requests)
-    }
-
-    /// Finder-style drag from a sidebar device row: clear the library
-    /// selection, select the target device, then send the dropped files.
-    /// Awaiting the device selection ensures the send targets the right
-    /// device.
-    func sendDroppedFiles(urls: [URL], to deviceID: UUID) async {
-        // Mutate the connection's facet state in place — the session shim
-        // returns a copy, so a plain `facetNavigation.clear()` would be dropped.
-        connection?.facetNavigation.clear()
-        await devices.select(deviceID)
-        await sendFiles(urls: urls)
-    }
+    // Send-to-device lives in the macOS shell (`MacFeatures.swift`): it needs
+    // the device store, which the shared session deliberately lacks.
 
     /// Loads a file URL from a drag/drop item provider. Shared by the library
     /// drop handler and the sidebar device-row drop handler.

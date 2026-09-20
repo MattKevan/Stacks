@@ -1,4 +1,7 @@
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import SwiftUI
 
 /// Browser for a connected device's books: table with DRM badges, Import
@@ -8,32 +11,33 @@ import SwiftUI
 /// toolbar activity popover (ContentView), never over the content. `onImported`
 /// lets the host flip its import-report sheet after a device import completes.
 struct DeviceBooksView: View {
+    @Environment(MacFeatures.self) private var mac
     @Bindable var session: LibrarySession
     @State private var selection = Set<String>() // DeviceBookRecord ids
     var onImported: () -> Void = {}
 
     var body: some View {
         Group {
-            if let error = session.devices.deviceError, session.devices.deviceBooks.isEmpty {
+            if let error = mac.devices.deviceError, mac.devices.deviceBooks.isEmpty {
                 ContentUnavailableView {
                     Label("Couldn't Read Device", systemImage: "externaldrive.badge.exclamationmark")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Scan Again") { Task { await session.devices.scanForDevices() } }
+                    Button("Scan Again") { Task { await mac.devices.scanForDevices() } }
                 }
-            } else if session.devices.deviceBooks.isEmpty {
+            } else if mac.devices.deviceBooks.isEmpty {
                 ContentUnavailableView {
                     Label("No Books on Device", systemImage: "books.vertical")
                 } description: {
                     Text(
-                        session.devices.isListing
+                        mac.devices.isListing
                             ? "Reading the device…"
                             : "Send books from your library, or copy them onto the Kindle another way."
                     )
                 }
             } else {
-                Table(session.devices.deviceBooks, selection: $selection) {
+                Table(mac.devices.deviceBooks, selection: $selection) {
                     TableColumn("Title") { record in
                         HStack(spacing: 6) {
                             if record.isEnriched && record.isDRM {
@@ -58,40 +62,40 @@ struct DeviceBooksView: View {
                 }
             }
         }
-        .navigationTitle(session.devices.devices.first { $0.id == session.selectedDeviceID }?.name ?? "Device")
+        .navigationTitle(mac.devices.devices.first { $0.id == mac.devices.selectedDeviceID }?.name ?? "Device")
         .onChange(of: selection) { _, newSelection in
             // Lazy detail: fetching metadata downloads the file (~24s per book
             // on the Kindle), so enrich only the selected row, never the whole
             // list. The spinner in the row stays until isEnriched flips.
             guard let first = newSelection.first,
-                  let record = session.devices.deviceBooks.first(where: { $0.id == first }),
+                  let record = mac.devices.deviceBooks.first(where: { $0.id == first }),
                   !record.isEnriched else { return }
-            Task { await session.devices.enrich(record) }
+            Task { await mac.devices.enrich(record) }
         }
         .toolbar {
             ToolbarItemGroup {
                 Button("Import Selected") { importSelected() }
-                    .disabled(selection.isEmpty || session.devices.isBusy)
+                    .disabled(selection.isEmpty || mac.devices.isBusy)
                     .help(
                         selection.isEmpty
                             ? "Select a book on the device to import it into the library"
                             : "Import the selected book(s) into the library"
                     )
                 Button("Import All") { importAll() }
-                    .disabled(session.devices.deviceBooks.isEmpty || session.devices.isBusy)
+                    .disabled(mac.devices.deviceBooks.isEmpty || mac.devices.isBusy)
                     .help(
-                        session.devices.deviceBooks.isEmpty
+                        mac.devices.deviceBooks.isEmpty
                             ? "No books on the device to import"
                             : "Import every book on the device into the library"
                     )
                 Button {
-                    if let id = session.selectedDeviceID { Task { await session.devices.refreshBooks() } }
+                    if let id = mac.devices.selectedDeviceID { Task { await mac.devices.refreshBooks() } }
                 } label: { Label("Refresh", systemImage: "arrow.clockwise") }
-                .disabled(session.devices.isBusy)
+                .disabled(mac.devices.isBusy)
                 Button {
-                    if let id = session.selectedDeviceID { Task { await session.devices.eject(id) } }
+                    if let id = mac.devices.selectedDeviceID { Task { await mac.devices.eject(id) } }
                 } label: { Label("Eject", systemImage: "eject") }
-                .disabled(session.devices.isBusy)
+                .disabled(mac.devices.isBusy)
             }
         }
     }
@@ -105,7 +109,7 @@ struct DeviceBooksView: View {
             // operation; the toolbar activity popover shows "Importing
             // books…" with per-book progress, then "Converting to library
             // format…".
-            let converted = await session.devices.importBooks(files) { urls in
+            let converted = await mac.devices.importBooks(files) { urls in
                 await session.importFiles(urls: urls)
             }
             // Only flip the host's import-report sheet when conversion actually
@@ -116,13 +120,13 @@ struct DeviceBooksView: View {
     }
 
     private func importSelected() {
-        let files = session.devices.deviceBooks
+        let files = mac.devices.deviceBooks
             .filter { selection.contains($0.id) }
             .map(\.file)
         importFiles(files)
     }
 
     private func importAll() {
-        importFiles(session.devices.deviceBooks.map(\.file))
+        importFiles(mac.devices.deviceBooks.map(\.file))
     }
 }

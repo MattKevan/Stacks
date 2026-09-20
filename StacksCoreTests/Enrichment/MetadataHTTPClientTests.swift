@@ -2,7 +2,9 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
 import Testing
 
 /// Pins `URLSessionMetadataHTTPClient`'s timeout/retry contract via a stubbed

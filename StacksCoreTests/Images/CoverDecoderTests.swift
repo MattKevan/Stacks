@@ -3,7 +3,9 @@ import Testing
 #if canImport(ImageIO)
 import ImageIO
 #endif
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 @Suite
 struct CoverDecoderTests {

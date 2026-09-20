@@ -23,20 +23,6 @@
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "DFDCF63221586A6CBA4CF3E8"
-               BuildableName = "StacksCore.framework"
-               BlueprintName = "StacksCore"
-               ReferencedContainer = "container:Stacks.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
             buildForRunning = "NO"
             buildForProfiling = "NO"
             buildForArchiving = "NO"
@@ -46,6 +32,20 @@
                BlueprintIdentifier = "74719EF83C214489EA64C07B"
                BuildableName = "StacksCoreTests.xctest"
                BlueprintName = "StacksCoreTests"
+               ReferencedContainer = "container:Stacks.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "4AF428231B402BCD7DD3E312"
+               BuildableName = "StacksDevices.framework"
+               BlueprintName = "StacksDevices"
                ReferencedContainer = "container:Stacks.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>

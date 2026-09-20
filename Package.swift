@@ -1,21 +1,26 @@
 // swift-tools-version: 6.0
 //
-// The Linux-port package: builds the server-facing subset of StacksCore with
-// plain `swift build` (macOS + Linux arm64/x86_64). Apple-only components —
-// MTP devices (Devices), ImageIO cover thumbnailing (CoverThumbnailer.swift),
-// Vendored, and macOS sandbox bookmarking (Security) — are EXCLUDED from the
-// core target. Calibre, Enrichment, Import, MobiImport, and the server
-// compile on both platforms; the remaining Apple-only code (e.g. Bonjour)
-// stays in via `canImport` guards, and BonjourTests is excluded from the test
-// target. The macOS app keeps building the full core via XcodeGen; this
-// package is the headless `stacks` surface.
+// Single build definition for the portable Stacks code.
+//
+// Module map:
+//   StacksKit        — portable domain + persistence (journal, catalog, library,
+//                      import, metadata, calibre, mobi, enrichment, images).
+//   StacksSync       — sync wire models + the RemoteLibrary client.
+//   StacksServerKit  — Hummingbird server, OPDS, basic auth, Bonjour/Avahi.
+//   stacks           — the headless CLI.
+//
+// The macOS-only device layer (`StacksCore/Devices` + `StacksCore/Vendored`)
+// is NOT here: it is a XcodeGen framework target consumed only by the macOS
+// app, because it is built on IOUSBHost/IOKit and never runs on Linux or iOS.
 import PackageDescription
 
 let package = Package(
-    name: "StacksCore",
+    name: "Stacks",
     platforms: [.macOS(.v15)],
     products: [
-        .library(name: "StacksCore", targets: ["StacksCore"]),
+        .library(name: "StacksKit", targets: ["StacksKit"]),
+        .library(name: "StacksSync", targets: ["StacksSync"]),
+        .library(name: "StacksServerKit", targets: ["StacksServerKit"]),
         .executable(name: "stacks", targets: ["StacksServer"]),
     ],
     dependencies: [
@@ -29,10 +34,9 @@ let package = Package(
     ],
     targets: [
         // Minimal module map exposing the system zlib: the Linux cover decoder
-        // (CoverDecoder.swift) inflates/deflates PNG IDAT streams through it.
-        // libmobi already links zlib, so no extra system dependency on either
-        // platform (macOS: SDK libz; Linux: the zlib dev package the server
-        // build already requires).
+        // (Images/CoverDecoder.swift) inflates/deflates PNG IDAT streams
+        // through it. libmobi already links zlib, so no extra system
+        // dependency on either platform.
         .systemLibrary(
             name: "Clibz",
             path: "StacksCore/Clibz",
@@ -40,33 +44,41 @@ let package = Package(
             providers: [.apt(["zlib1g-dev"]), .brew(["zlib"])]
         ),
         .target(
-            name: "StacksCore",
+            name: "StacksKit",
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift"),
-                .product(name: "Hummingbird", package: "hummingbird"),
-                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "libmobi", package: "libmobi-swift"),
+                // SHA-256 content hashing uses CryptoKit on Apple platforms and
+                // swift-crypto's `Crypto` module elsewhere.
+                .product(name: "Crypto", package: "swift-crypto"),
                 .target(name: "Clibz"),
             ],
             path: "StacksCore",
-            // Apple-only / client-only code the headless server never runs.
-            exclude: [
-                "Devices",
-                "Vendored",
-                "Library/CoverThumbnailer.swift",
-                // macOS sandbox bookmarking (security-scoped URLs); the
-                // headless server opens libraries by path argument.
-                "Security",
-                // The Clibz system library target's module map + shim header.
-                "Clibz",
-            ]
+            // Clibz is the system-library target above; Devices/Vendored are the
+            // macOS-only device layer; Server/Sync are their own targets.
+            exclude: ["Clibz", "Devices", "Vendored", "Server", "Sync"]
+        ),
+        .target(
+            name: "StacksSync",
+            dependencies: ["StacksKit"],
+            path: "StacksCore/Sync"
+        ),
+        .target(
+            name: "StacksServerKit",
+            dependencies: [
+                "StacksKit",
+                "StacksSync",
+                .product(name: "Hummingbird", package: "hummingbird"),
+                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
+            ],
+            path: "StacksCore/Server"
         ),
         .executableTarget(
             name: "StacksServer",
             dependencies: [
-                "StacksCore",
+                "StacksKit",
+                "StacksServerKit",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "StacksServer"
@@ -74,17 +86,17 @@ let package = Package(
         .testTarget(
             name: "StacksCoreTests",
             dependencies: [
-                "StacksCore",
+                "StacksKit",
+                "StacksSync",
+                "StacksServerKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Hummingbird", package: "hummingbird"),
-                .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "libmobi", package: "libmobi-swift"),
             ],
             path: "StacksCoreTests",
-            // Mirrors the core target's excludes: tests referencing excluded
-            // client features (Devices) and macOS-only surfaces (BonjourTests
-            // uses Network.framework).
+            // Tests for the macOS-only device layer and Apple-only surfaces
+            // stay in the Xcode target only.
             exclude: [
                 "Devices",
                 "Security",

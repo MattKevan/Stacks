@@ -1,6 +1,8 @@
 import Foundation
 import GRDB
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 /// Builds a faithful Calibre `user_version`-26 library for reader tests.
 ///

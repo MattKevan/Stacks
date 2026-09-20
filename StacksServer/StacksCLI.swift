@@ -1,6 +1,8 @@
 import ArgumentParser
 import Foundation
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
 
 /// The headless library server CLI — `stacks create|enrich|import-calibre|import|serve|status|browse|list|search`.
 @main
@@ -40,6 +42,7 @@ private func openOrCreateLibrary(
     at root: URL,
     indexesDirectory: URL
 ) async throws -> LibraryRepository {
+    try LibraryLayout.migrateControlDirectoryIfNeeded(root: root)
     let layout = LibraryLayout(root: root)
     let manifestExists = FileManager.default.fileExists(atPath: layout.manifestURL.path)
     if !manifestExists {

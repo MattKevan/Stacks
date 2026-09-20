@@ -3,8 +3,12 @@ import SwiftUI
 /// Standard macOS preferences pane (Settings… / Cmd-,). The Diagnostics
 /// section moved here from the toolbar so the window toolbar stays clean.
 struct SettingsView: View {
+    @Environment(MacFeatures.self) private var mac
     @Bindable var settings: AppSettings
     @Environment(\.librarySession) private var librarySession
+
+    /// The in-process server lives on `MacFeatures` (macOS-only) now.
+    private var sharingService: SharingService? { mac.sharing }
 
     var body: some View {
         TabView {
@@ -57,7 +61,7 @@ struct SettingsView: View {
                     }
                     .help("The port the shared server binds (restart sharing to apply)")
                 }
-                if let sharing = librarySession?.sharing {
+                if let sharing = sharingService {
                     if sharing.isServingSync {
                         LabeledContent("Address", value: sharing.addressString)
                         Button("Copy Address") {
@@ -75,7 +79,7 @@ struct SettingsView: View {
                 Toggle("Share OPDS catalog", isOn: opdsBinding)
                     .help("Exposes the catalog to third-party readers (Thorium, KOReader, Calibre) on the same port")
                 if settings.shareOPDSOverNetwork {
-                    if let sharing = librarySession?.sharing {
+                    if let sharing = sharingService {
                         if sharing.isServingOPDS {
                             LabeledContent("Feed URL", value: sharing.opdsAddressString)
                             Button("Copy Feed URL") {
@@ -108,7 +112,7 @@ struct SettingsView: View {
                 settings.shareLibraryOverNetwork = newValue
                 guard let session = librarySession else { return }
                 Task { @MainActor in
-                    if !(await session.reconcileSharing()) {
+                    if !(await session.reconcileSharing(mac.sharing)) {
                         settings.shareLibraryOverNetwork = false
                         session.lastError = "Open a library before sharing it."
                     }
@@ -126,7 +130,7 @@ struct SettingsView: View {
                 settings.shareOPDSOverNetwork = newValue
                 guard let session = librarySession else { return }
                 Task { @MainActor in
-                    if !(await session.reconcileSharing()) {
+                    if !(await session.reconcileSharing(mac.sharing)) {
                         settings.shareOPDSOverNetwork = false
                         session.lastError = "Open a library before sharing it."
                     }

@@ -37,6 +37,7 @@ public actor LibraryRepository: LibraryRepositoryImporting {
         indexesDirectory: URL,
         deviceID: UUID
     ) async throws -> LibraryRepository {
+        try LibraryLayout.migrateControlDirectoryIfNeeded(root: root)
         let layout = LibraryLayout(root: root)
         // Refuse to create over an existing library: writing a fresh manifest
         // would change its identity and fork the library.
@@ -61,6 +62,7 @@ public actor LibraryRepository: LibraryRepositoryImporting {
         indexesDirectory: URL,
         deviceID: UUID
     ) async throws -> LibraryRepository {
+        try LibraryLayout.migrateControlDirectoryIfNeeded(root: root)
         let layout = LibraryLayout(root: root)
         let manifest = try layout.readManifest()
         guard manifest.formatVersion == 2 else {

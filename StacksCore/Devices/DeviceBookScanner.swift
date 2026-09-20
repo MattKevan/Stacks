@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 public struct DeviceBookRecord: Sendable, Equatable, Identifiable {
     public let file: DeviceFile

@@ -3,11 +3,34 @@ import Foundation
 public struct LibraryLayout: Sendable {
     public let root: URL
 
+    /// The name of the directory that holds the journal, manifest, and staging
+    /// areas inside a library.
+    static let controlDirectoryName = ".stacks"
+    /// The pre-rename control directory. Kept only so
+    /// `migrateControlDirectoryIfNeeded` can find libraries created before the
+    /// rename.
+    private static let legacyControlDirectoryName = ".bookmanager"
+
     public init(root: URL) {
         self.root = root.standardizedFileURL
     }
 
-    public var controlRoot: URL { root.appending(path: ".bookmanager", directoryHint: .isDirectory) }
+    /// One-time migration: the control directory was named `.bookmanager`;
+    /// rename it to `.stacks` so libraries created before the rename keep
+    /// opening. Idempotent — a no-op once `.stacks` exists (or when there's
+    /// nothing to migrate). Throws rather than failing silently, so a library
+    /// is never mistaken for an empty folder.
+    public static func migrateControlDirectoryIfNeeded(root: URL) throws {
+        let fileManager = FileManager.default
+        let root = root.standardizedFileURL
+        let legacy = root.appending(path: legacyControlDirectoryName, directoryHint: .isDirectory)
+        let current = root.appending(path: controlDirectoryName, directoryHint: .isDirectory)
+        guard fileManager.fileExists(atPath: legacy.path),
+              !fileManager.fileExists(atPath: current.path) else { return }
+        try fileManager.moveItem(at: legacy, to: current)
+    }
+
+    public var controlRoot: URL { root.appending(path: Self.controlDirectoryName, directoryHint: .isDirectory) }
     public var manifestURL: URL { controlRoot.appending(path: "library.json") }
     public var changesRoot: URL { controlRoot.appending(path: "changes", directoryHint: .isDirectory) }
     public var bookChangesRoot: URL { changesRoot.appending(path: "books", directoryHint: .isDirectory) }
@@ -38,12 +61,12 @@ public struct LibraryLayout: Sendable {
         ] {
             try manager.createDirectory(at: directory, withIntermediateDirectories: true)
         }
-        let data = try JSONEncoder.bookManager.encode(manifest)
+        let data = try JSONEncoder.stacks.encode(manifest)
         try data.write(to: manifestURL, options: .atomic)
     }
 
     public func readManifest() throws -> LibraryManifest {
-        try JSONDecoder.bookManager.decode(
+        try JSONDecoder.stacks.decode(
             LibraryManifest.self,
             from: Data(contentsOf: manifestURL)
         )
@@ -51,7 +74,7 @@ public struct LibraryLayout: Sendable {
 }
 
 extension JSONEncoder {
-    static var bookManager: JSONEncoder {
+    public static var stacks: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -60,7 +83,7 @@ extension JSONEncoder {
 }
 
 extension JSONDecoder {
-    static var bookManager: JSONDecoder {
+    public static var stacks: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder

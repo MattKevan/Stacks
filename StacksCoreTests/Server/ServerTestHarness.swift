@@ -8,7 +8,9 @@ import Darwin
 import Glibc
 #endif
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 /// Shared helpers for server tests: a real `LibraryServer` on a probed free
 /// port, driven over HTTP. (HummingbirdTesting's router-level client breaks

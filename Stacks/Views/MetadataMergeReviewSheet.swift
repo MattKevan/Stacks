@@ -1,6 +1,9 @@
 import AppKit
 import UniformTypeIdentifiers
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import SwiftUI
 
 /// Per-field Keep / Use-fetched review for a fetched metadata candidate. The

@@ -263,7 +263,7 @@ public actor CalibreImportService {
             // materialize() consumes the format staged files on success; every
             // other exit, and the cover staged copy (never consumed — the
             // repository writes covers from Data), must be removed so the
-            // synced .bookmanager/staging area never leaks files or empty
+            // synced .stacks/staging area never leaks files or empty
             // per-import directories.
             for file in staged {
                 try? FileManager.default.removeItem(at: file.url)

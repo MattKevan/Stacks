@@ -1,5 +1,7 @@
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 /// The real macOS pipeline cannot run in a test process: it needs an app
 /// bundle (`UNUserNotificationCenter.current()` hard-crashes — an

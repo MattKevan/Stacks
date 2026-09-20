@@ -1,5 +1,8 @@
 import AppKit
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -19,6 +22,7 @@ extension FocusedValues {
 
 
 struct ContentView: View {
+    @Environment(MacFeatures.self) private var mac
     @Bindable var session: LibrarySession
     @State private var importURLs: [URL] = []
     @State private var showSendReport = false
@@ -65,7 +69,7 @@ struct ContentView: View {
             // Device support: rescan the USB bus on activation so a device
             // plugged in while the app was inactive appears in the sidebar.
             // (The shared-FS reconnection hook left with the sync layer.)
-            Task { await session.devices.scanForDevices() }
+            Task { await mac.devices.scanForDevices() }
         }
         .onChange(of: session.selection) { _, newValue in
             if newValue.count == 1 && !session.isMarqueeSelecting && isHomeContext {
@@ -76,11 +80,11 @@ struct ContentView: View {
         // modal sheet (the sheet is the fallback when notifications are not
         // authorized). The DeviceManager flag is reset so a later send
         // re-triggers this observation.
-        .onChange(of: session.devices.sendReportPresented) { _, presented in
-            guard presented, let report = session.devices.sendReport else { return }
+        .onChange(of: mac.devices.sendReportPresented) { _, presented in
+            guard presented, let report = mac.devices.sendReport else { return }
             Task {
                 if await !SystemNotifier.postSendCompletion(report: report) { showSendReport = true }
-                session.devices.sendReportPresented = false
+                mac.devices.sendReportPresented = false
             }
         }
         .fileImporter(
@@ -126,7 +130,7 @@ struct ContentView: View {
             onCancellation: { session.pickerAction = nil }
         )
         .sheet(isPresented: $showSendReport) {
-            if let report = session.devices.sendReport {
+            if let report = mac.devices.sendReport {
                 SendReportView(report: report) { showSendReport = false }
             }
         }
@@ -246,16 +250,16 @@ extension ContentView {
     @ToolbarContentBuilder
     private var deviceToolbarItems: some ToolbarContent {
         ToolbarItem(id: "send-to-device") {
-            if session.devices.devices.isEmpty {
+            if mac.devices.devices.isEmpty {
                 EmptyView()
-            } else if let device = session.devices.devices.first, session.devices.devices.count == 1 {
+            } else if let device = mac.devices.devices.first, mac.devices.devices.count == 1 {
                 Button {
                     Task {
                         // Mirror the multi-device path: select the sole device
                         // first so send-to-device works without a prior
                         // sidebar click (select is same-id guarded).
-                        await session.devices.select(device.id)
-                        await session.sendSelectionToDevice()
+                        await mac.devices.select(device.id)
+                        await session.sendSelectionToDevice(using: mac.devices)
                     }
                 } label: {
                     Label("Send to Device", systemImage: "arrow.up.doc")
@@ -263,11 +267,11 @@ extension ContentView {
                 .disabled(session.selection.isEmpty)
             } else {
                 Menu {
-                    ForEach(session.devices.devices) { device in
+                    ForEach(mac.devices.devices) { device in
                         Button(device.name) {
                             Task {
-                                await session.devices.select(device.id)
-                                await session.sendSelectionToDevice()
+                                await mac.devices.select(device.id)
+                                await session.sendSelectionToDevice(using: mac.devices)
                             }
                         }
                     }
@@ -306,7 +310,7 @@ extension ContentView {
             }
         }
         ToolbarItem(id: "open") {
-            if session.selectedDeviceID == nil {
+            if mac.devices.selectedDeviceID == nil {
                 Button {
                     openSelection()
                 } label: {
@@ -341,7 +345,7 @@ extension ContentView {
             }
         }
         ToolbarItem(id: "edit-metadata") {
-            if session.selectedDeviceID == nil {
+            if mac.devices.selectedDeviceID == nil {
                 Button {
                     editSelection()
                 } label: {
@@ -356,7 +360,7 @@ extension ContentView {
     /// device view is table-only), so it is hidden in device mode.
     private var viewPickerToolbarItem: some ToolbarContent {
         ToolbarItem(id: "view-picker") {
-            if session.selectedDeviceID == nil && session.browser != nil {
+            if mac.devices.selectedDeviceID == nil && session.browser != nil {
                 Picker("View", selection: viewModeBinding) {
                     Image(systemName: "list.bullet")
                         .accessibilityLabel("Table")
@@ -391,7 +395,7 @@ extension ContentView {
     /// the search bar.
     private var inspectorToolbarItem: some ToolbarContent {
         ToolbarItem(id: "inspector") {
-            if session.selectedDeviceID == nil {
+            if mac.devices.selectedDeviceID == nil {
                 Button {
                     session.inspectorPresented.toggle()
                 } label: {
@@ -416,8 +420,8 @@ extension ContentView {
     /// active facet category when browsing one (e.g. "Library3 — Authors").
     /// Falls back to the app name only when nothing is open.
     private var windowTitle: String {
-        if session.selectedDeviceID != nil {
-            return session.devices.selectedDevice?.name ?? "Device"
+        if mac.devices.selectedDeviceID != nil {
+            return mac.devices.selectedDevice?.name ?? "Device"
         }
         guard let browser = session.browser else { return "Stacks" }
         if let category = browser.facetNavigation.category {
@@ -430,7 +434,7 @@ extension ContentView {
     /// library or a connected remote), or a no-library placeholder.
     private var detailColumn: some View {
         Group {
-            if session.selectedDeviceID != nil {
+            if mac.devices.selectedDeviceID != nil {
                 DeviceBooksView(session: session) {
                     session.presentImportReport()
                 }
@@ -494,8 +498,8 @@ extension ContentView {
         session.calibreActivity != nil
             || session.serverTransferActivity != nil
             || session.importActivity != nil
-            || session.devices.currentActivity != nil
-            || session.devices.pendingCount > 0
+            || mac.devices.currentActivity != nil
+            || mac.devices.pendingCount > 0
     }
 
     /// The toolbar activity glyph: a determinate ring when the current
@@ -509,7 +513,7 @@ extension ContentView {
             progressGlyph(activity.progress)
         } else if let activity = session.importActivity {
             progressGlyph(activity.progress)
-        } else if let activity = session.devices.currentActivity {
+        } else if let activity = mac.devices.currentActivity {
             progressGlyph(activity.progress)
         } else {
             Image(systemName: "checkmark.circle")
@@ -847,6 +851,7 @@ private struct CredentialPromptView: View {
 /// view stays stable.
 private struct ActivityPopover: View {
     @Bindable var session: LibrarySession
+    @Environment(MacFeatures.self) private var mac
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -865,16 +870,16 @@ private struct ActivityPopover: View {
             }
             // Device connection state lives in the sidebar; the popover only
             // shows live activity.
-            if let activity = session.devices.currentActivity {
+            if let activity = mac.devices.currentActivity {
                 activityRow(activity)
             }
-            if session.devices.pendingCount > 0 {
+            if mac.devices.pendingCount > 0 {
                 Divider()
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Queued (\(session.devices.pendingCount))")
+                    Text("Queued (\(mac.devices.pendingCount))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    ForEach(Array(session.devices.pendingTitles.enumerated()), id: \.offset) { _, title in
+                    ForEach(Array(mac.devices.pendingTitles.enumerated()), id: \.offset) { _, title in
                         HStack(spacing: 6) {
                             ProgressView()
                                 .controlSize(.mini)

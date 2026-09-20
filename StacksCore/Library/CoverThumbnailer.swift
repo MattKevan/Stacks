@@ -1,3 +1,8 @@
+// Apple-only: turns `CoverDecoder`'s PNG output back into a `CGImage` for the
+// UI layer. The portable `CoverDecoder` (ImageIO on Apple, zlib on Linux)
+// compiles everywhere; this wrapper does not, so it is compiled out where
+// there is no ImageIO (the headless Linux server never renders covers).
+#if canImport(ImageIO)
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -32,3 +37,4 @@ public enum CoverThumbnailer {
         return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 }
+#endif

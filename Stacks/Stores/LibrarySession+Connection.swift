@@ -1,5 +1,8 @@
 import Foundation
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 
 // MARK: - Single-library opening
 
@@ -25,6 +28,7 @@ extension LibrarySession {
     ) async {
         let manifestID: UUID
         do {
+            try LibraryLayout.migrateControlDirectoryIfNeeded(root: url)
             manifestID = try LibraryLayout(root: url).readManifest().id
         } catch {
             handleOpenFailure(error, fallbackToWelcome: fallbackToWelcome, url: url)
@@ -76,10 +80,10 @@ extension LibrarySession {
             if let oldHome { openStore.remove(oldHome.id) }
             activeLibraryID = connection.id
             state = .loaded
-            // Auto-start the shared server when a sharing/OPDS preference is
-            // on (launch reopen and the Open menu both land here).
-            Task { await self.reconcileSharing() }
-            // The connection's init already refreshed; this post-wiring pass
+            // Auto-starting the shared server happens through the session's
+            // `onHomeChanged` hook (set by the macOS shell), so `home = ...`
+            // above already reconciled sharing. The connection's init already
+            // refreshed; this post-wiring pass
             // guarantees a browse failure after open lands in `state = .failed`
             // (the init ran before the callbacks above were attached).
             await connection.refreshAll()
@@ -126,7 +130,7 @@ extension LibrarySession {
         }
         connection.onSelectionChange = { [weak self] in
             guard let self else { return }
-            Task { await self.devices.select(nil) }
+            self.onDeviceContextCleared?()
         }
     }
 

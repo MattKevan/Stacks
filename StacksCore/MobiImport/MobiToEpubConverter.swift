@@ -88,7 +88,7 @@ public enum MobiToEpubConverter {
         <?xml version="1.0" encoding="utf-8"?>
         <package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="bookid">
         <metadata>
-        <dc:identifier opf:scheme="BOOKMANAGER" id="bookid">\(uid)</dc:identifier>
+        <dc:identifier opf:scheme="STACKS" id="bookid">\(uid)</dc:identifier>
         <dc:title>\(escaped(content.title))</dc:title>
         \(creators)
         \(subjects)

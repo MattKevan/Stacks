@@ -20,7 +20,7 @@ struct BasicAuthMiddleware: RouterMiddleware<BasicRequestContext> {
             return try await next(request, context)
         }
         var response = Response(status: .unauthorized)
-        response.headers[.wwwAuthenticate] = "Basic realm=\"Book Manager\""
+        response.headers[.wwwAuthenticate] = "Basic realm=\"Stacks\""
         return response
     }
 

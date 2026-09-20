@@ -1,6 +1,8 @@
 import ArgumentParser
 import Foundation
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
 
 /// `stacks list` — a one-shot, read-only listing of a local library's books.
 /// Sort and filter semantics come from `BookBrowserModel`, the same tested

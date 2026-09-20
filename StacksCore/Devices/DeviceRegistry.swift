@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 public struct DeviceRegistry: Sendable {
     private let profiles: [any DeviceProfile]

@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 public struct DeviceFile: Sendable, Equatable, Identifiable {
     public let name: String

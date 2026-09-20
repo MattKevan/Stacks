@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 /// Discovers MTP devices and builds `MTPKitTransport` instances backed by
 /// MTPKit (pure Swift, native IOUSBHost — no libusb, no libmtp).

@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -87,7 +88,7 @@ public actor RemoteLibrary {
         var components = URLComponents(url: baseURL.appending(path: "api/identity"), resolvingAgainstBaseURL: false)!
         let (data, status) = try await request(method: "GET", components: components)
         guard status == 200 else { throw RemoteError.serverError(status) }
-        return try JSONDecoder.bookManager.decode(LibraryIdentity.self, from: data)
+        return try JSONDecoder.stacks.decode(LibraryIdentity.self, from: data)
     }
 
     public func pull() async throws {
@@ -95,7 +96,7 @@ public actor RemoteLibrary {
         components.queryItems = [URLQueryItem(name: "after", value: "\(cursor)")]
         let (data, status) = try await request(method: "GET", components: components)
         guard status == 200 else { throw RemoteError.serverError(status) }
-        let response = try JSONDecoder.bookManager.decode(SyncPullResponse.self, from: data)
+        let response = try JSONDecoder.stacks.decode(SyncPullResponse.self, from: data)
         for command in response.commands {
             try CommandReplay.apply(command, to: &state)
         }
@@ -123,10 +124,10 @@ public actor RemoteLibrary {
                 guard status == 200 else { throw RemoteError.serverError(status) }
             }
             var components = URLComponents(url: baseURL.appending(path: "api/commands"), resolvingAgainstBaseURL: false)!
-            let body = try JSONEncoder.bookManager.encode(SyncPushRequest(commands: [command]))
+            let body = try JSONEncoder.stacks.encode(SyncPushRequest(commands: [command]))
             let (data, status) = try await request(method: "POST", components: components, body: body)
             guard status == 200 else { throw RemoteError.serverError(status) }
-            let result = try JSONDecoder.bookManager.decode(SyncPushResponse.self, from: data)
+            let result = try JSONDecoder.stacks.decode(SyncPushResponse.self, from: data)
             return .applied(result.applied)
         } catch let error as RemoteError {
             switch error {

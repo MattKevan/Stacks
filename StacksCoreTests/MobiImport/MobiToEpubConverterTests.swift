@@ -4,7 +4,9 @@ import FoundationXML
 #endif
 import Testing
 import ZIPFoundation
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 @Suite
 struct MobiToEpubConverterTests {

@@ -113,7 +113,7 @@ public typealias ProgressHandler = @Sendable (TransferProgress) -> Void
 /// talk only to this protocol, so a USB/MTP backend and a future wireless/ADB
 /// backend are interchangeable. All methods are `async` because the underlying I/O
 /// (USB bulk transfers, network) is inherently asynchronous and serialized.
-/// Renamed from `DeviceTransport` on vendoring: BookManagerCore already defines
+/// Renamed from `DeviceTransport` on vendoring: StacksCore already defines
 /// its own `DeviceTransport` (the app-facing device protocol).
 public protocol MTPDeviceTransport: Sendable {
     /// Stable identifier for this connected device (for sidebar identity, reconnection).

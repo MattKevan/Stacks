@@ -6,7 +6,9 @@ import Crypto
 import Foundation
 import GRDB
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 @Suite
 struct CalibreReaderTests {

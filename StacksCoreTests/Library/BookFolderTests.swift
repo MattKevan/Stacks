@@ -2,7 +2,9 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 @Suite
 struct BookFolderTests {

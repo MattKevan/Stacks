@@ -1,7 +1,9 @@
 import Foundation
 import Synchronization
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 @Suite
 struct RebuildProgressTests {

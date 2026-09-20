@@ -1,5 +1,8 @@
 import AppKit
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import SwiftUI
 
 /// Tile frames in the grid's named coordinate space, collected for marquee

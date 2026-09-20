@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 public struct DeviceImportService: Sendable {
     private let transport: any DeviceTransport

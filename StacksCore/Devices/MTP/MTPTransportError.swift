@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 /// Errors surfaced by the MTP transports (MTPKit backend), mapped from the
 /// library's typed errors so the app sees stable, readable messages.

@@ -62,7 +62,7 @@ public struct JournalCommand: Sendable, Codable, Equatable {
     }
 
     /// One format file staged for an `addBook`. `stagedName` references
-    /// `.bookmanager/staging/<commandID>/<stagedName>`; apply moves it into
+    /// `.stacks/staging/<commandID>/<stagedName>`; apply moves it into
     /// the book folder and removes the staging directory.
     public struct StagedFormat: Sendable, Codable, Equatable {
         public let kind: String

@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 public protocol DeviceProfile: Sendable {
     var id: String { get }

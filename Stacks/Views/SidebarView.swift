@@ -1,4 +1,7 @@
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import Foundation
 import SwiftUI
 
@@ -20,6 +23,7 @@ enum SidebarItem: Hashable {
 }
 
 struct SidebarView: View {
+    @Environment(MacFeatures.self) private var mac
     @Bindable var session: LibrarySession
 
     /// The facet categories offered in the Library and remote sections, in order.
@@ -40,7 +44,7 @@ struct SidebarView: View {
                     }
                     return .remote(remote.id, .allBooks)
                 }
-                if let id = session.selectedDeviceID {
+                if let id = mac.devices.selectedDeviceID {
                     return .device(id)
                 }
                 // The browser context is the active library: rows map to
@@ -83,7 +87,7 @@ struct SidebarView: View {
                         }
                     }
                 case let .device(id):
-                    session.selectDevice(id)
+                    session.selectDevice(id, using: mac.devices)
                 case nil:
                     break
                 }
@@ -99,14 +103,14 @@ struct SidebarView: View {
                         .tag(SidebarItem.category(category))
                 }
             }
-            if !session.devices.devices.isEmpty {
+            if !mac.devices.devices.isEmpty {
                 Section("Devices") {
-                    ForEach(session.devices.devices) { device in
+                    ForEach(mac.devices.devices) { device in
                         HStack(spacing: 6) {
                             Label(device.name, systemImage: "externaldrive")
                             Spacer()
                             Button {
-                                Task { await session.devices.eject(device.id) }
+                                Task { await mac.devices.eject(device.id) }
                             } label: {
                                 Image(systemName: "eject.fill")
                             }
@@ -240,7 +244,7 @@ struct SidebarView: View {
                 }
             }
             guard !urls.isEmpty else { return }
-            await session.sendDroppedFiles(urls: urls, to: deviceID)
+            await session.sendDroppedFiles(urls: urls, to: deviceID, using: mac.devices)
         }
         return true
     }

@@ -1,5 +1,8 @@
 import AppKit
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import SwiftUI
 
 /// Candidate picker for ambiguous metadata lookups. Each candidate lists the

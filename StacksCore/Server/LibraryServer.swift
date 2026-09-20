@@ -3,6 +3,8 @@ import Hummingbird
 import NIOCore
 import Logging
 import ServiceLifecycle
+import StacksKit
+import StacksSync
 
 /// The shared library server: the journal engine exposed over HTTP. One
 /// instance per library; the owning process (macOS app or the headless CLI)
@@ -56,7 +58,9 @@ public actor LibraryServer {
     /// Builds the Hummingbird application (testable in-process via
     /// HummingbirdTesting; the CLI runs it with `run()`).
     public func makeApplication() throws -> some ApplicationProtocol {
-        let router = Router()
+        // OPDS readers (KOReader does this before every feed fetch) issue a
+        // HEAD before the GET; without this a HEAD gets a 404.
+        let router = Router(options: .autoGenerateHeadEndpoints)
         router.middlewares.add(BasicAuthMiddleware(
             username: configuration.username, password: configuration.password
         ))
@@ -117,36 +121,34 @@ public actor LibraryServer {
 
         // MARK: - Files
 
+        // Two download shapes share one implementation: `?format=` (the app and
+        // sync clients) and the extension-terminated `…/download/<filename>`
+        // that OPDS readers need, since they infer the format from the URL's
+        // last path extension.
+        let fileResponse: @Sendable (UUID, String?) async throws -> Response = { bookID, format in
+            try await Self.bookFileResponse(repository: repository, bookID: bookID, format: format)
+        }
+
         router.get("api/books/:id/download") { request, context -> Response in
             guard let id = context.parameters.get("id").flatMap(UUID.init(uuidString:)) else {
                 throw HTTPError(.badRequest)
             }
-            let format = request.uri.queryParameters.get("format")
-            guard let book = try await repository.book(id: id) else {
-                throw HTTPError(.notFound)
+            return try await fileResponse(id, request.uri.queryParameters.get("format"))
+        }
+
+        // OPDS acquisition target: the trailing name is informational, but it
+        // must be a single path segment ending in the format's extension.
+        router.get("api/books/:id/download/:filename") { request, context -> Response in
+            guard let id = context.parameters.get("id").flatMap(UUID.init(uuidString:)),
+                  let rawName = context.parameters.get("filename"),
+                  let filename = rawName.removingPercentEncoding,
+                  !filename.isEmpty,
+                  !filename.contains("/"),
+                  !filename.contains("..") else {
+                throw HTTPError(.badRequest)
             }
-            let root = LibraryLayout(root: repository.root).root
-            let url: URL
-            if let format, let match = book.formats.first(where: {
-                $0.kind.lowercased() == format.lowercased()
-            }) {
-                url = root
-                    .appending(path: book.relativePath, directoryHint: .isDirectory)
-                    .appending(path: match.filename)
-            } else if let format = book.formats.first {
-                url = root
-                    .appending(path: book.relativePath, directoryHint: .isDirectory)
-                    .appending(path: format.filename)
-            } else {
-                throw HTTPError(.notFound)
-            }
-            guard FileManager.default.fileExists(atPath: url.path),
-                  let data = try? Data(contentsOf: url) else {
-                throw HTTPError(.notFound)
-            }
-            var response = Response(status: .ok, body: ResponseBody(byteBuffer: ByteBuffer(data: data)))
-            response.headers[.contentType] = "application/octet-stream"
-            return response
+            let ext = (filename as NSString).pathExtension.lowercased()
+            return try await fileResponse(id, ext.isEmpty ? nil : ext)
         }
 
         router.get("api/books/:id/cover") { request, context -> Response in
@@ -172,41 +174,67 @@ public actor LibraryServer {
         // MARK: - OPDS (third-party readers)
         if configuration.serveOPDS {
 
-        router.get("opds") { request, _ -> String in
-            OPDSFeed.root(baseURL: "http://\(request.head.authority ?? "localhost")")
-        }
-
-        router.get("opds/books") { request, _ -> String in
-            let page = max(1, request.uri.queryParameters.get("page").flatMap(Int.init) ?? 1)
-            let books = try await repository.books()
-            return OPDSFeed.booksFeed(
-                title: "All Books", books: books,
-                baseURL: "http://\(request.head.authority ?? "localhost")",
-                page: page, pageHref: "/opds/books"
+        // Every OPDS body is Atom or an OpenSearch description; the matching
+        // Content-Type (with charset) goes on the wire, not text/plain.
+        router.get("opds") { request, _ -> Response in
+            Self.opdsResponse(
+                OPDSFeed.root(
+                    title: displayName,
+                    baseURL: "http://\(request.head.authority ?? "localhost")"
+                ),
+                contentType: OPDSFeed.navigationContentType
             )
         }
 
-        router.get("opds/newest") { request, _ -> String in
+        // The OpenSearch Description Document the root feed's `rel="search"`
+        // points at.
+        router.get("opds/search.xml") { request, _ -> Response in
+            Self.opdsResponse(
+                OPDSFeed.openSearchDescription(baseURL: "http://\(request.head.authority ?? "localhost")"),
+                contentType: OPDSFeed.openSearchContentType
+            )
+        }
+
+        router.get("opds/books") { request, _ -> Response in
+            let page = max(1, request.uri.queryParameters.get("page").flatMap(Int.init) ?? 1)
+            let books = try await repository.books()
+            return Self.opdsResponse(
+                OPDSFeed.booksFeed(
+                    title: "All Books", books: books,
+                    baseURL: "http://\(request.head.authority ?? "localhost")",
+                    page: page, pageHref: "/opds/books"
+                ),
+                contentType: OPDSFeed.acquisitionContentType
+            )
+        }
+
+        router.get("opds/newest") { request, _ -> Response in
             let page = max(1, request.uri.queryParameters.get("page").flatMap(Int.init) ?? 1)
             let books = try await repository.books()
                 .sorted { ($0.addedMilliseconds ?? 0) > ($1.addedMilliseconds ?? 0) }
-            return OPDSFeed.booksFeed(
-                title: "Newest", books: books,
-                baseURL: "http://\(request.head.authority ?? "localhost")",
-                page: page, pageHref: "/opds/newest"
+            return Self.opdsResponse(
+                OPDSFeed.booksFeed(
+                    title: "Newest", books: books,
+                    baseURL: "http://\(request.head.authority ?? "localhost")",
+                    page: page, pageHref: "/opds/newest"
+                ),
+                contentType: OPDSFeed.acquisitionContentType
             )
         }
 
-        router.get("opds/search") { request, _ -> String in
+        router.get("opds/search") { request, _ -> Response in
             guard let query = request.uri.queryParameters.get("q"), !query.isEmpty else {
                 throw HTTPError(.badRequest)
             }
             let page = max(1, request.uri.queryParameters.get("page").flatMap(Int.init) ?? 1)
             let books = try await repository.search(query)
-            return OPDSFeed.booksFeed(
-                title: "Search: \(query)", books: books,
-                baseURL: "http://\(request.head.authority ?? "localhost")",
-                page: page, pageHref: "/opds/search"
+            return Self.opdsResponse(
+                OPDSFeed.booksFeed(
+                    title: "Search: \(query)", books: books,
+                    baseURL: "http://\(request.head.authority ?? "localhost")",
+                    page: page, pageHref: "/opds/search"
+                ),
+                contentType: OPDSFeed.acquisitionContentType
             )
         }
 
@@ -218,38 +246,47 @@ public actor LibraryServer {
         ] {
             // The navigation feed listing every value of the facet — the
             // root feed links here, so a missing route 404s in readers.
-            router.get(RouterPath(path)) { request, _ -> String in
+            router.get(RouterPath(path)) { request, _ -> Response in
                 let values = try await repository.facetCounts(facetType)
-                return OPDSFeed.facetFeed(
-                    title: title, values: values,
-                    baseURL: "http://\(request.head.authority ?? "localhost")",
-                    href: "/\(path)"
+                return Self.opdsResponse(
+                    OPDSFeed.facetFeed(
+                        title: title, values: values,
+                        baseURL: "http://\(request.head.authority ?? "localhost")",
+                        href: "/\(path)"
+                    ),
+                    contentType: OPDSFeed.navigationContentType
                 )
             }
-            router.get(RouterPath("\(path)/:value")) { request, context -> String in
+            router.get(RouterPath("\(path)/:value")) { request, context -> Response in
                 guard let raw = context.parameters.get("value"),
                       let value = raw.removingPercentEncoding else {
                     throw HTTPError(.badRequest)
                 }
                 let page = max(1, request.uri.queryParameters.get("page").flatMap(Int.init) ?? 1)
                 let books = try await repository.books(facetType: facetType, value: value)
-                return OPDSFeed.booksFeed(
-                    title: "\(title): \(value)", books: books,
-                    baseURL: "http://\(request.head.authority ?? "localhost")",
-                    page: page, pageHref: "/\(path)/\(OPDSFeed.percentEncode(value))"
+                return Self.opdsResponse(
+                    OPDSFeed.booksFeed(
+                        title: "\(title): \(value)", books: books,
+                        baseURL: "http://\(request.head.authority ?? "localhost")",
+                        page: page, pageHref: "/\(path)/\(OPDSFeed.percentEncode(value))"
+                    ),
+                    contentType: OPDSFeed.acquisitionContentType
                 )
             }
         }
 
-        router.get("opds/books/:id") { request, context -> String in
+        router.get("opds/books/:id") { request, context -> Response in
             guard let id = context.parameters.get("id").flatMap(UUID.init(uuidString:)),
                   let book = try await repository.book(id: id) else {
                 throw HTTPError(.notFound)
             }
-            return OPDSFeed.booksFeed(
-                title: book.title, books: [book],
-                baseURL: "http://\(request.head.authority ?? "localhost")",
-                pageHref: "/opds/books/\(book.id.uuidString)"
+            return Self.opdsResponse(
+                OPDSFeed.booksFeed(
+                    title: book.title, books: [book],
+                    baseURL: "http://\(request.head.authority ?? "localhost")",
+                    pageHref: "/opds/books/\(book.id.uuidString)"
+                ),
+                contentType: OPDSFeed.acquisitionContentType
             )
         }
         }
@@ -312,6 +349,54 @@ public actor LibraryServer {
         #endif
         advertiser.start()
         self.advertiser = advertiser
+    }
+
+    /// Serves a book's stored format file. `format` is matched against the
+    /// format kind case-insensitively — a file extension works because kinds
+    /// are uppercased extensions; nil (or no match) falls back to the first
+    /// stored format, matching the long-standing `?format=` behaviour.
+    private static func bookFileResponse(
+        repository: LibraryRepository,
+        bookID: UUID,
+        format: String?
+    ) async throws -> Response {
+        guard let book = try await repository.book(id: bookID) else {
+            throw HTTPError(.notFound)
+        }
+        guard let match = book.formats.first(where: {
+            $0.kind.lowercased() == format?.lowercased()
+        }) ?? book.formats.first else {
+            throw HTTPError(.notFound)
+        }
+        let root = LibraryLayout(root: repository.root).root
+        let url = root
+            .appending(path: book.relativePath, directoryHint: .isDirectory)
+            .appending(path: match.filename)
+        guard FileManager.default.fileExists(atPath: url.path),
+              let data = try? Data(contentsOf: url) else {
+            throw HTTPError(.notFound)
+        }
+        var response = Response(status: .ok, body: ResponseBody(byteBuffer: ByteBuffer(data: data)))
+        response.headers[.contentType] = BookMediaType.mimeType(forKind: match.kind)
+        response.headers[.contentDisposition] = "attachment; filename=\"\(headerSafe(match.filename))\""
+        return response
+    }
+
+    /// Wraps a feed body with its OPDS/OpenSearch `Content-Type` (UTF-8).
+    private static func opdsResponse(_ xml: String, contentType: String) -> Response {
+        var response = Response(status: .ok, body: ResponseBody(byteBuffer: ByteBuffer(string: xml)))
+        response.headers[.contentType] = "\(contentType);charset=utf-8"
+        return response
+    }
+
+    /// Removes characters that would break a quoted `Content-Disposition`
+    /// filename parameter (quotes, backslashes, line breaks).
+    private static func headerSafe(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "_")
+            .replacingOccurrences(of: "\"", with: "_")
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\n", with: "")
     }
 
     /// The opened library's manifest id (Bonjour TXT, diagnostics).

@@ -1,3 +1,6 @@
+// Security-scoped bookmarks are an Apple-platform API (`.withSecurityScope`);
+// the headless Linux server opens libraries by path and never needs them.
+#if canImport(Darwin)
 import Foundation
 
 /// Persists the set of libraries currently open in the app: security-scoped
@@ -108,3 +111,4 @@ public struct OpenLibraryStore: @unchecked Sendable {
             }
     }
 }
+#endif

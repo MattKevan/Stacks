@@ -4,6 +4,9 @@ import SwiftUI
 struct StacksApp: App {
     @State private var session = LibrarySession()
     @State private var settings = AppSettings()
+    /// The macOS-only feature cluster (device store + in-process server).
+    /// Injected into the environment; iOS never builds one.
+    @State private var mac = MacFeatures()
 
     init() {
         // One-time migration of the Application Support directory so
@@ -14,7 +17,11 @@ struct StacksApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(session: session)
+                .environment(mac)
                 .task {
+                    // Wire the session's platform hooks (device selection
+                    // clearing, sharing lifecycle) to the macOS stores.
+                    mac.attach(to: session)
                     // Skip auto-reopen under UI testing so tests start from a
                     // deterministic welcome screen.
                     if !CommandLine.arguments.contains("--ui-testing") {
@@ -24,11 +31,12 @@ struct StacksApp: App {
         }
         .defaultSize(width: 1_100, height: 720)
         .commands {
-            AppCommands(session: session)
+            AppCommands(session: session, mac: mac)
         }
         Settings {
             SettingsView(settings: settings)
                 .environment(\.librarySession, session)
+                .environment(mac)
         }
     }
 }
@@ -38,6 +46,7 @@ struct StacksApp: App {
 /// it from here without touching the session.
 private struct AppCommands: Commands {
     let session: LibrarySession
+    let mac: MacFeatures
 
     @FocusedValue(\.searchFocus) private var searchFocus: FocusState<Bool>.Binding?
 
@@ -82,10 +91,10 @@ private struct AppCommands: Commands {
                 .keyboardShortcut("i", modifiers: [.command, .shift])
             Divider()
             Button("Send to Device") {
-                Task { await session.sendSelectionToDevice() }
+                Task { await session.sendSelectionToDevice(using: mac.devices) }
             }
             .keyboardShortcut("d", modifiers: [.command, .shift])
-            .disabled(session.selection.isEmpty || session.devices.selectedDeviceID == nil)
+            .disabled(session.selection.isEmpty || mac.devices.selectedDeviceID == nil)
         }
         // Books menu: actions on the library selection and its metadata.
         // All items are HOME-ONLY chrome (peers are browse + transfer in this
@@ -95,7 +104,7 @@ private struct AppCommands: Commands {
                 session.metadataEditQueue = session.selectionBooks
             }
             .keyboardShortcut("e", modifiers: .command)
-            .disabled(session.selection.isEmpty || session.isLibraryUnavailable || session.selectedDeviceID != nil || !isHomeContext)
+            .disabled(session.selection.isEmpty || session.isLibraryUnavailable || mac.devices.selectedDeviceID != nil || !isHomeContext)
             Button("Fetch Missing Metadata…") {
                 Task { await session.enrichAllBooksMissingMetadata() }
             }
@@ -106,13 +115,13 @@ private struct AppCommands: Commands {
                     Task { await session.open(id: id) }
                 }
             }
-            .disabled(session.selection.isEmpty || session.isLibraryUnavailable || session.selectedDeviceID != nil || !isHomeContext)
+            .disabled(session.selection.isEmpty || session.isLibraryUnavailable || mac.devices.selectedDeviceID != nil || !isHomeContext)
             Button("Show in Finder") {
                 if let id = session.selection.first {
                     Task { await session.reveal(id: id) }
                 }
             }
-            .disabled(session.selection.isEmpty || session.isLibraryUnavailable || session.selectedDeviceID != nil || !isHomeContext)
+            .disabled(session.selection.isEmpty || session.isLibraryUnavailable || mac.devices.selectedDeviceID != nil || !isHomeContext)
             Divider()
             // Server transfers: upload home selection to a connected server
             // (one item per server — "send to a, send to b"), or download
@@ -124,7 +133,7 @@ private struct AppCommands: Commands {
                     }
                 }
             }
-            .disabled(session.remotes.isEmpty || session.selection.isEmpty || session.selectedDeviceID != nil || !isHomeContext)
+            .disabled(session.remotes.isEmpty || session.selection.isEmpty || mac.devices.selectedDeviceID != nil || !isHomeContext)
             Button("Import from Server") {
                 if let remote = session.activeRemote {
                     Task { await session.importSelectionFromRemote(remote) }
@@ -145,7 +154,7 @@ private struct AppCommands: Commands {
             .disabled(
                 session.activeLibrary?.selection.isEmpty ?? true
                     || session.activeLibrary?.isLibraryUnavailable ?? true
-                    || session.selectedDeviceID != nil
+                    || mac.devices.selectedDeviceID != nil
             )
         }
         CommandGroup(after: .textEditing) {

@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 /// A book record as persisted by the local device listing cache — a display
 /// cache (instant device view on re-select or relaunch), not a metadata source.
@@ -82,7 +83,7 @@ public struct LocalDeviceCache: Sendable {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         do {
             let data = try Data(contentsOf: url)
-            return try JSONDecoder.bookManager.decode(LocalDeviceSnapshot.self, from: data)
+            return try JSONDecoder.stacks.decode(LocalDeviceSnapshot.self, from: data)
         } catch {
             // Corrupt or unreadable cache: degrade silently.
             return nil
@@ -93,7 +94,7 @@ public struct LocalDeviceCache: Sendable {
     /// move into place.
     public func save(_ snapshot: LocalDeviceSnapshot) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let data = try JSONEncoder.bookManager.encode(snapshot)
+        let data = try JSONEncoder.stacks.encode(snapshot)
         let url = fileURL(for: snapshot.key)
         let temp = directory.appending(path: "\(Self.sanitized(snapshot.key)).tmp-\(UUID().uuidString)")
         try data.write(to: temp, options: .atomic)

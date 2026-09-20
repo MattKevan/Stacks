@@ -82,7 +82,7 @@ final class AppSettings {
     }
 
     /// Advertise the shared library over Bonjour so other Stacks clients can
-    /// discover it (the Shared sidebar section browses `_bookmanager._tcp`).
+    /// discover it (the Shared sidebar section browses `_stacks._tcp`).
     var advertiseWithBonjour: Bool {
         get { _advertiseWithBonjour }
         set {

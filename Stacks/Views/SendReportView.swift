@@ -1,4 +1,7 @@
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import SwiftUI
 
 /// Result sheet for a send-to-device run: what was copied, what had no

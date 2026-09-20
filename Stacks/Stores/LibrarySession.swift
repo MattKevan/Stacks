@@ -1,5 +1,6 @@
-import AppKit
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
 import Foundation
 import Observation
 
@@ -131,7 +132,7 @@ final class LibrarySession {
     /// context in reverse. Without this a connected Kindle keeps the detail
     /// pane on the device view while the sidebar highlights the remote row.
     func selectRemote(_ id: UUID?) {
-        devices.selectedDeviceID = nil
+        onDeviceContextCleared?()
         activeRemoteID = (id != nil && remotes.contains { $0.id == id }) ? id : nil
     }
     /// The library awaiting credentials: non-nil while the credential prompt
@@ -168,16 +169,15 @@ final class LibrarySession {
     var home: LibraryConnection? {
         get { _home }
         set {
-            // Sharing binds to the home library's repository; switching or
-            // closing home must tear the server down (the new library would
-            // otherwise be served under the old journal).
-            if newValue?.id != _home?.id, sharing.isSharing {
-                Task { await sharing.stop() }
-            }
             // The Shared section shows OTHER libraries — never the app's own
             // share, which advertises on the same _stacks._tcp bus.
             discovery.excludedIDs = newValue.map { [$0.id] } ?? []
             _home = newValue
+            // Sharing binds to the home library's repository; switching or
+            // closing home must tear the server down (the new library would
+            // otherwise be served under the old journal). macOS-only side
+            // effect, wired by the shell.
+            onHomeChanged?()
         }
     }
     private var _home: LibraryConnection?
@@ -205,34 +205,18 @@ final class LibrarySession {
     /// `LibrarySession+Connection.swift` can read it.
     var pendingOpenLibraryIDs: Set<UUID> = []
 
-    // Device support: the connected-device store and the sidebar selection
-    // bridging into it (selecting a device clears the library facet, and vice
-    // versa is handled by `selectCategory`).
-    let devices = DeviceManager()
-    var selectedDeviceID: UUID? {
-        get { devices.selectedDeviceID }
-        set { devices.selectedDeviceID = newValue }
-    }
+    // MARK: - Platform hooks
+    //
+    // The shared session knows nothing about MTP devices or the in-process
+    // server (both macOS-only). The macOS shell wires these to its own stores;
+    // the iOS app leaves them nil and the calls become no-ops.
 
-    /// Selects a device in the sidebar; choosing a device clears the active
-    /// library's facet so the detail area shows the device browser. The actual
-    /// state transition (selection + book listing) happens in `DeviceManager.select`
-    /// so selecting a device immediately loads its books.
-    func selectDevice(_ id: UUID?) {
-        if id != nil {
-            // Device mode: the browser context returns to home — clearing
-            // activeLibraryID makes `activeLibrary` resolve to home while a
-            // device is selected, so the home toolbar cluster (Add Books),
-            // search, and sync bindings stay correct over the device listing.
-            // Deselecting returns to home; the remotes' facet state is
-            // preserved on their browsers, just not auto-restored.
-            activeLibraryID = nil
-            activeRemoteID = nil
-            activeLibrary?.facetNavigation.clear()
-            connection?.isShowingAudiobooks = false
-        }
-        Task { await devices.select(id) }
-    }
+    /// Called when the browser context switches away from a device (a remote or
+    /// library row was selected): the macOS shell clears its device selection.
+    var onDeviceContextCleared: (() -> Void)?
+    /// Called after `home` changes. The macOS shell stops sharing, whose
+    /// lifecycle is bound to the home library's repository.
+    var onHomeChanged: (() -> Void)?
 
     init(
         deviceID: UUID = UUID(),
@@ -248,24 +232,9 @@ final class LibrarySession {
     /// lifetime; `stop()` is a no-op at deinit (the process owns the socket).
     let discovery = LibraryDiscovery()
 
-    /// The in-process library server + Bonjour advertising (Settings →
-    /// Sharing). Lifecycle follows the home library and the share toggle.
-    let sharing = SharingService()
-
-    /// Create New Library: NSSavePanel lets the user choose WHERE the library
-    /// lives and NAME its folder. The open-panel flow this replaces could only
-    /// pick an existing folder — it either created the library inside an
-    /// arbitrary folder or hit `libraryAlreadyExists`. The panel returns
-    /// <location>/<name>; the folder is created by `LibraryRepository.create`.
-    func createNewLibrary() {
-        let panel = NSSavePanel()
-        panel.title = "Create New Library"
-        panel.prompt = "Create"
-        panel.nameFieldStringValue = "My Library"
-        panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        Task { await createLibrary(at: url) }
-    }
+    // `createNewLibrary()` (the NSSavePanel flow that picks a location and a
+    // name) lives in the macOS shell: the panel is AppKit, and iOS chooses a
+    // location differently. `createLibrary(at:)` below is the shared step.
 
     func createLibrary(at url: URL) async {
         // A library owns its folder: refuse to create inside an existing
@@ -501,7 +470,7 @@ final class LibrarySession {
         // the home rows can't be reached while a Kindle is selected.
         activeLibraryID = home?.id
         activeRemoteID = nil
-        devices.selectedDeviceID = nil
+        onDeviceContextCleared?()
         connection?.selectCategory(type)
     }
 
@@ -511,7 +480,7 @@ final class LibrarySession {
     func selectAudiobooks() {
         activeLibraryID = home?.id
         activeRemoteID = nil
-        devices.selectedDeviceID = nil
+        onDeviceContextCleared?()
         connection?.showAudiobooks()
     }
     func restore(id: UUID) async { await connection?.restore(id: id) }

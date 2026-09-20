@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 public enum SendOutcome: Sendable, Equatable {
     case copy(format: String)

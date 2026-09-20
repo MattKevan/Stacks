@@ -119,7 +119,7 @@ public actor ImportService {
                 let staged = try await folder.stage(from: prepared.url)
                 // materialize() consumes the staged copy on success; every other
                 // exit (duplicate, throw) must remove it so the synced
-                // .bookmanager/staging area never leaks files or empty per-import
+                // .stacks/staging area never leaks files or empty per-import
                 // directories.
                 defer {
                     try? FileManager.default.removeItem(at: staged.url)

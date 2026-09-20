@@ -1,5 +1,8 @@
 import Foundation
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import Testing
 @testable import Stacks
 
@@ -13,7 +16,7 @@ import Testing
 @MainActor
 @Suite
 struct LibrarySessionSelectionTests {
-    private func makeSession() async throws -> (LibrarySession, LibraryConnection) {
+    private func makeSession() async throws -> (LibrarySession, LibraryConnection, MacFeatures) {
         let root = FileManager.default.temporaryDirectory
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         let indexes = FileManager.default.temporaryDirectory
@@ -29,23 +32,28 @@ struct LibrarySessionSelectionTests {
             deviceID: UUID(),
             bookmarks: LibraryBookmarkStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
         )
+        // Device selection now lives on the macOS shell's MacFeatures; the
+        // session reaches it through the hooks `attach` installs. Using the
+        // real wiring keeps these orchestration tests meaningful.
+        let mac = MacFeatures()
+        mac.attach(to: session)
         session.home = connection
-        return (session, connection)
+        return (session, connection, mac)
     }
 
     @Test
     func homeCategorySelectionExitsDeviceMode() async throws {
-        let (session, connection) = try await makeSession()
+        let (session, connection, mac) = try await makeSession()
         defer { connection.stop() }
         // A connected, selected Kindle: the sidebar getter reports it as the
         // context. The device id is fabricated — selection state is what
         // matters, not a live transport.
-        session.selectedDeviceID = UUID()
+        mac.devices.selectedDeviceID = UUID()
 
         // Sidebar click on "All Books" / a Library-section category.
         session.selectCategory(nil)
 
-        #expect(session.selectedDeviceID == nil)
+        #expect(mac.devices.selectedDeviceID == nil)
         #expect(session.activeRemoteID == nil)
         #expect(session.activeLibraryID == session.home?.id)
         // The browser context is home again.
@@ -54,22 +62,22 @@ struct LibrarySessionSelectionTests {
 
     @Test
     func remoteSelectionExitsDeviceMode() async throws {
-        let (session, connection) = try await makeSession()
+        let (session, connection, mac) = try await makeSession()
         defer { connection.stop() }
-        session.selectedDeviceID = UUID()
+        mac.devices.selectedDeviceID = UUID()
 
         // Sidebar click on a Shared-section remote (nil id = the "return to
         // home" transition, which runs the same device-clearing line as a
         // real remote id — the membership check only decides activeRemoteID).
         session.selectRemote(nil)
 
-        #expect(session.selectedDeviceID == nil)
+        #expect(mac.devices.selectedDeviceID == nil)
         #expect(session.activeRemoteID == nil)
     }
 
     @Test
     func deviceSelectionClearsRemoteAndLibraryContext() async throws {
-        let (session, connection) = try await makeSession()
+        let (session, connection, mac) = try await makeSession()
         defer { connection.stop() }
         session.selectCategory(.author)
         // A remote is the browser context (fabricated id — only the
@@ -78,7 +86,7 @@ struct LibrarySessionSelectionTests {
 
         // Selecting a device is the reverse transition: it must clear the
         // remote context so the device listing is the browser surface.
-        session.selectDevice(UUID())
+        session.selectDevice(UUID(), using: mac.devices)
 
         #expect(session.activeRemoteID == nil)
     }
@@ -87,16 +95,16 @@ struct LibrarySessionSelectionTests {
 
     @Test
     func audiobooksSelectionExitsDeviceAndRemote() async throws {
-        let (session, connection) = try await makeSession()
+        let (session, connection, mac) = try await makeSession()
         defer { connection.stop() }
-        session.selectedDeviceID = UUID()
+        mac.devices.selectedDeviceID = UUID()
         session.selectCategory(.author)
 
         // Sidebar click on the Audiobooks row: home becomes the browser
         // context and the audiobooks filter turns on.
         session.selectAudiobooks()
 
-        #expect(session.selectedDeviceID == nil)
+        #expect(mac.devices.selectedDeviceID == nil)
         #expect(session.activeRemoteID == nil)
         #expect(session.activeLibraryID == session.home?.id)
         #expect(connection.isShowingAudiobooks)
@@ -106,7 +114,7 @@ struct LibrarySessionSelectionTests {
 
     @Test
     func categorySelectionExitsAudiobooks() async throws {
-        let (session, connection) = try await makeSession()
+        let (session, connection, mac) = try await makeSession()
         defer { connection.stop() }
         session.selectAudiobooks()
 
@@ -120,18 +128,18 @@ struct LibrarySessionSelectionTests {
 
     @Test
     func deviceSelectionExitsAudiobooks() async throws {
-        let (session, connection) = try await makeSession()
+        let (session, connection, mac) = try await makeSession()
         defer { connection.stop() }
         session.selectAudiobooks()
 
-        session.selectDevice(UUID())
+        session.selectDevice(UUID(), using: mac.devices)
 
         #expect(!connection.isShowingAudiobooks)
     }
 
     @Test
     func audiobooksFiltersBooksToAudioFormats() async throws {
-        let (session, connection) = try await makeSession()
+        let (session, connection, mac) = try await makeSession()
         defer { connection.stop() }
         // One ebook and one audiobook, staged with real files so their
         // formats carry the right kinds.

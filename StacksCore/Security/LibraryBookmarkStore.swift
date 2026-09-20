@@ -1,3 +1,6 @@
+// Security-scoped bookmarks are an Apple-platform API (`.withSecurityScope`);
+// the headless Linux server opens libraries by path and never needs them.
+#if canImport(Darwin)
 import Foundation
 
 public struct ResolvedLibraryBookmark: Sendable {
@@ -83,3 +86,4 @@ public struct LibraryBookmarkStore: @unchecked Sendable {
 public enum LibraryBookmarkError: Error, Equatable {
     case notFound(UUID)
 }
+#endif

@@ -22,7 +22,7 @@ public enum OpfGenerator {
         <?xml version="1.0" encoding="utf-8"?>
         <package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="bookid">
         <metadata>
-        <dc:identifier opf:scheme="BOOKMANAGER" id="bookid">\(shortID)</dc:identifier>
+        <dc:identifier opf:scheme="STACKS" id="bookid">\(shortID)</dc:identifier>
         <dc:title>\(escaped(resolved.title))</dc:title>
         \(resolved.authors.map { "<dc:creator opf:role=\"aut\">\(escaped($0))</dc:creator>" }.joined(separator: "\n"))
         \(tags)

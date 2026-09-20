@@ -4,7 +4,9 @@ import FoundationNetworking
 #endif
 import Hummingbird
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 /// Protocol tests against the REAL socket: the server runs on a probed free
 /// port (HummingbirdTesting's router-level client breaks swift-testing's
@@ -53,7 +55,7 @@ struct ProtocolTests {
 
     private func send(
         _ port: Int, method: String, path: String, body: Data? = nil, headers: [String: String] = [:]
-    ) async throws -> (status: Int, data: Data) {
+    ) async throws -> (status: Int, data: Data, response: HTTPURLResponse?) {
         var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)\(path)")!)
         request.httpMethod = method
         request.httpBody = body
@@ -62,7 +64,8 @@ struct ProtocolTests {
         }
         request.timeoutInterval = 5
         let (data, response) = try await URLSession.shared.data(for: request)
-        return ((response as? HTTPURLResponse)?.statusCode ?? 0, data)
+        let http = response as? HTTPURLResponse
+        return (http?.statusCode ?? 0, data, http)
     }
 
     @Test
@@ -184,6 +187,53 @@ struct ProtocolTests {
             port, method: "GET", path: "/api/books/\(bookID.uuidString)/download?format=EPUB"
         )
         #expect(download.status == 200)
+    }
+
+    @Test
+    func extensionTerminatedDownloadServesTheBookForOPDSReaders() async throws {
+        let port = try ServerTestHarness.freePort()
+        try await startServer(port: port)
+
+        let bookID = UUID()
+        let commandID = UUID()
+        let content = Data("epub bytes".utf8)
+        _ = try await send(
+            port, method: "POST",
+            path: "/api/stage?command=\(commandID.uuidString)&name=0-book.epub",
+            body: content
+        )
+        let pushed = try await send(port, method: "POST", path: "/api/commands",
+            body: try ProtocolTests.isoEncoder.encode(SyncPushRequest(commands: [
+                ClientCommand(id: commandID, op: .addBook(.init(
+                    bookID: bookID, title: "Ext", authors: ["Eve"],
+                    series: nil, seriesIndex: nil, tags: [], rating: nil, publisher: nil,
+                    publicationDate: nil, addedDate: .now, languages: [], identifiers: [:], comments: nil,
+                    formats: [.init(
+                        kind: "EPUB", filename: "Ext - Eve.epub", contentHash: "abc",
+                        size: Int64(content.count), stagedName: "0-book.epub"
+                    )],
+                    cover: nil
+                )))
+            ])))
+        #expect(pushed.status == 200)
+
+        // The exact shape the OPDS feed advertises: percent-encoded filename,
+        // extension last. The response must name the file and the real type.
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/api/books/\(bookID.uuidString)/download/Ext%20-%20Eve.epub")!)
+        request.timeoutInterval = 5
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let http = try #require(response as? HTTPURLResponse)
+        #expect(http.statusCode == 200)
+        #expect(data == content)
+        #expect(http.value(forHTTPHeaderField: "Content-Type") == "application/epub+zip")
+        #expect(http.value(forHTTPHeaderField: "Content-Disposition")?.contains("Ext - Eve.epub") == true)
+
+        // Path traversal in the filename is rejected outright.
+        let traversal = try await send(
+            port, method: "GET",
+            path: "/api/books/\(bookID.uuidString)/download/..%2F..%2Fetc%2Fpasswd"
+        )
+        #expect(traversal.status == 400)
     }
 
     @Test
@@ -345,6 +395,37 @@ struct ProtocolTests {
         let opds = try await send(port, method: "GET", path: "/opds")
         #expect(opds.status == 200)
         #expect(String(decoding: opds.data, as: UTF8.self).contains("<feed"))
+    }
+
+    @Test
+    func opdsRoutesAdvertiseAtomContentTypesAndOpenSearch() async throws {
+        let port = try ServerTestHarness.freePort()
+        try await startServer(port: port)
+
+        func contentType(_ response: (status: Int, data: Data, response: HTTPURLResponse?)) -> String? {
+            response.response?.value(forHTTPHeaderField: "Content-Type")
+        }
+
+        let root = try await send(port, method: "GET", path: "/opds")
+        #expect(root.status == 200)
+        #expect(contentType(root) == "application/atom+xml;profile=opds-catalog;kind=navigation;charset=utf-8")
+        let rootBody = String(decoding: root.data, as: UTF8.self)
+        // The root feed is titled with the library display name (the folder
+        // name when not configured), so shared libraries are distinguishable.
+        #expect(rootBody.contains("<title>library</title>"))
+        // The root feed links to the OpenSearch description, not the search URL.
+        #expect(rootBody.contains("rel=\"search\" href=\"http://127.0.0.1:\(port)/opds/search.xml\""))
+
+        let books = try await send(port, method: "GET", path: "/opds/books")
+        #expect(contentType(books) == "application/atom+xml;profile=opds-catalog;kind=acquisition;charset=utf-8")
+
+        let facet = try await send(port, method: "GET", path: "/opds/authors")
+        #expect(contentType(facet) == "application/atom+xml;profile=opds-catalog;kind=navigation;charset=utf-8")
+
+        let osd = try await send(port, method: "GET", path: "/opds/search.xml")
+        #expect(osd.status == 200)
+        #expect(contentType(osd) == "application/opensearchdescription+xml;charset=utf-8")
+        #expect(String(decoding: osd.data, as: UTF8.self).contains("<OpenSearchDescription"))
     }
 
     @Test

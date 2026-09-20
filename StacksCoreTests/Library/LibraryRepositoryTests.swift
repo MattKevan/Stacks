@@ -1,6 +1,8 @@
 import Foundation
 import Testing
-@testable import StacksCore
+@testable import StacksKit
+@testable import StacksSync
+@testable import StacksServerKit
 
 @Suite
 struct LibraryRepositoryTests {
@@ -50,9 +52,39 @@ struct LibraryRepositoryTests {
             )
         }
     }
+    @Test
+    func migratesLegacyControlDirectoryOnOpen() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        let firstIndexes = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        let secondIndexes = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+
+        let created = try await LibraryRepository.create(
+            at: root, indexesDirectory: firstIndexes, deviceID: UUID()
+        )
+
+        // Simulate a library created before the Book Manager -> Stacks rename
+        // by moving its control directory back to the legacy name.
+        let fileManager = FileManager.default
+        let legacy = root.appending(path: ".bookmanager", directoryHint: .isDirectory)
+        let current = root.appending(path: ".stacks", directoryHint: .isDirectory)
+        try fileManager.moveItem(at: current, to: legacy)
+
+        let reopened = try await LibraryRepository.open(
+            at: root, indexesDirectory: secondIndexes, deviceID: UUID()
+        )
+
+        // Same library (identity preserved), now under the new directory.
+        #expect(reopened.manifest.id == created.manifest.id)
+        #expect(fileManager.fileExists(atPath: current.appending(path: "library.json").path))
+        #expect(!fileManager.fileExists(atPath: legacy.path))
+    }
+
     /// Creating over a folder that is already a library must not clobber its
     /// manifest (Settings > Create New / Cmd+Shift+N over an existing
-    /// Book Manager library would otherwise fork it with a fresh id).
+    /// Stacks library would otherwise fork it with a fresh id).
     @Test
     func rejectsCreatingOverExistingLibrary() async throws {
         let root = FileManager.default.temporaryDirectory

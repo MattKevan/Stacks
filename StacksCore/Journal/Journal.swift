@@ -17,7 +17,7 @@ public actor Journal {
     private static let linesPerSegment = 1000
 
     /// Compact, deterministic codecs — the journal is line-per-record, so the
-    /// record JSON must not contain newlines (`JSONEncoder.bookManager` is
+    /// record JSON must not contain newlines (`JSONEncoder.stacks` is
     /// pretty-printed and would shred the line format).
     private static var encoder: JSONEncoder {
         let encoder = JSONEncoder()

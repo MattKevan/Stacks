@@ -1,6 +1,9 @@
 import Foundation
 import Observation
-import StacksCore
+import StacksKit
+import StacksSync
+import StacksServerKit
+import StacksDevices
 import SystemConfiguration
 
 /// Owns the in-process `LibraryServer` + Bonjour advertising driven by the
@@ -108,7 +111,7 @@ extension LibrarySession {
     /// surface enabled. Returns false when sharing was requested but no home
     /// library is open (the pane surfaces the error; launch stays silent).
     @discardableResult
-    func reconcileSharing() async -> Bool {
+    func reconcileSharing(_ sharing: SharingService) async -> Bool {
         let share = AppSettings.shareLibraryOverNetwork()
         let opds = AppSettings.shareOPDSOverNetwork()
         if share || opds {

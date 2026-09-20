@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 public protocol FormatConverter: Sendable {
     func canConvert(from sourceFormat: String, to targetFormat: String) -> Bool

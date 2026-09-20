@@ -1,4 +1,5 @@
 import Foundation
+import StacksKit
 
 /// One book's cached device metadata, as Calibre stores it in the device-side
 /// `metadata.calibre` file (a JSON array of book objects). Only the fields the
