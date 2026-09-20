@@ -145,15 +145,23 @@ extension LibrarySession {
         serverTransferActivity = nil
     }
 
-    /// Downloads the selected remote books into the home library: each
-    /// book's best format is fetched from the server and imported through
-    /// the standard pipeline (metadata extraction + content-hash dedupe).
-    /// Per-book progress in the toolbar popover; the import report sheet
-    /// covers the home-side results.
+    /// Downloads the selected remote books into the home library.
     func importSelectionFromRemote(_ remote: RemoteLibraryBrowser) async {
+        await importFromRemote(remote, books: remote.selectionBooks)
+    }
+
+    /// Downloads remote books into the home library: each book's best format
+    /// is fetched from the server and imported through the standard pipeline
+    /// (metadata extraction + content-hash dedupe).
+    ///
+    /// Sets `serverTransferActivity` for its duration, so any shell that
+    /// watches it gets per-book progress (`completed`/`total`/`currentTitle`)
+    /// for free. Completion is a system notification — not a sheet — and
+    /// failures are named rather than swallowed.
+    func importFromRemote(_ remote: RemoteLibraryBrowser, books: [IndexedBook]) async {
         guard let home else { return }
-        let books = remote.selectionBooks
         guard !books.isEmpty else { return }
+        _ = home
         var failures: [String] = []
         var urls: [URL] = []
         serverTransferActivity = ServerTransferActivity(
@@ -182,9 +190,6 @@ extension LibrarySession {
         )
         await importFiles(urls: urls)
         // Downloads never present the report overlay — a standard system
-        // notification is the only completion feedback (the app requests
-        // notification authorization on first use).
-        // Downloads never present the report overlay — a standard system
         // notification is the only completion feedback. Failures are NOT
         // silent: a failed download names the failed books instead of a
         // misleading 'Import complete'.
@@ -212,8 +217,15 @@ extension LibrarySession {
     /// the writer. The remote browser refreshes to show the arrivals.
     func sendSelectionToServer(_ remote: RemoteLibraryBrowser) async {
         guard let home else { return }
+        await sendToServer(home.selectionBooks, remote: remote)
+    }
+
+    /// The explicit-list form, for shells that act on a single book (the iOS
+    /// detail screen) rather than the current selection.
+    func sendToServer(_ books: [IndexedBook], remote: RemoteLibraryBrowser) async {
+        guard let home else { return }
         var urls: [URL] = []
-        for book in home.selectionBooks {
+        for book in books {
             if let url = home.formatFileURL(for: book) {
                 urls.append(url)
             }

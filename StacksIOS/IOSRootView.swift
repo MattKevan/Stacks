@@ -34,6 +34,15 @@ struct IOSRootView: View {
                 ProgressView("Preparing library…")
             }
         }
+        // Long transfers (imports, downloads, uploads) surface here rather than
+        // as a modal: an iOS spinner would hide the library for the duration of
+        // a batch, and there is no toolbar popover idiom to use instead. The
+        // Mac keeps its richer popover.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            TransferProgressBar(session: session)
+                .animation(.default, value: session.importActivity)
+                .animation(.default, value: session.serverTransferActivity)
+        }
         .fileImporter(
             isPresented: $isImporting,
             allowedContentTypes: [

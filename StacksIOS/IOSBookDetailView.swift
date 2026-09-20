@@ -69,9 +69,47 @@ struct IOSBookDetailView: View {
                 .buttonStyle(.bordered)
                 .disabled(isWorking || session.home == nil)
             }
+
+            // A home book can be pushed to a connected server. With one
+            // server this is a single tap; with several it opens a picker.
+            if isInHomeLibrary {
+                Button {
+                    sendToServer()
+                } label: {
+                    Label("Send to Server…", systemImage: "paperplane")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(isWorking)
+            }
         }
         .padding()
         .background(.bar)
+        .sheet(isPresented: $isPickingServer) {
+            IOSServerPicker(session: session, book: book) { remote in
+                Task { await send(book, to: remote) }
+            }
+            .presentationDetents([.medium])
+        }
+    }
+
+    @State private var isPickingServer = false
+
+    /// Sends straight to the only server; asks which one when there are
+    /// several.
+    private func sendToServer() {
+        if session.remotes.count == 1, let only = session.remotes.first {
+            Task { await send(book, to: only) }
+        } else {
+            isPickingServer = true
+        }
+    }
+
+    private func send(_ book: IndexedBook, to remote: RemoteLibraryBrowser) async {
+        isWorking = true
+        defer { isWorking = false }
+        await session.sendToServer([book], remote: remote)
+        statusMessage = "Sent to \(remote.name)."
     }
 
     /// Hand the book's file to another app (a reader, Files, AirDrop). The
@@ -103,29 +141,21 @@ struct IOSBookDetailView: View {
         await session.browser?.open(id: book.id)
     }
 
-    /// Downloads the remote book's first format and imports it into the phone's
-    /// library through the standard pipeline (metadata extraction + content
-    /// dedupe). The import report sheet covers the outcome.
+    /// Downloads the remote book into the phone's library.
+    ///
+    /// Goes through the session's transfer path rather than fetching directly,
+    /// so `serverTransferActivity` drives the shell's progress bar and
+    /// completion arrives as a notification, exactly like a Mac download.
     private func downloadToPhone() async {
-        guard let remote, let home = session.home else { return }
-        guard let format = book.formats.first else {
+        guard let remote, session.home != nil else { return }
+        guard !book.formats.isEmpty else {
             statusMessage = "This book has no downloadable format."
             return
         }
         isWorking = true
         defer { isWorking = false }
-        do {
-            let url = try await remote.remote.downloadFormat(
-                id: book.id, format: format.kind.lowercased()
-            )
-            await session.importFiles(urls: [url])
-            // Notified, not sheeted: same feedback path as a picker import.
-            await session.notifyImportCompletion()
-        } catch {
-            remote.noteUnreachable(error)
-            statusMessage = "Download failed: \(error.localizedDescription)"
-        }
-        _ = home
+        await session.importFromRemote(remote, books: [book])
+        await session.notifyImportCompletion()
     }
 
     /// Copies the book's file next to the library so it can be shared, then
