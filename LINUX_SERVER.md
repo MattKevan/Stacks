@@ -158,7 +158,7 @@ After=network.target
 
 [Service]
 User=matt
-ExecStart=/home/matt/.local/bin/stacks serve "/home/matt/Stacks library" --port 8090
+ExecStart=/home/matt/.local/bin/stacks serve "/home/matt/Stacks library"
 Restart=on-failure
 
 [Install]
@@ -167,7 +167,7 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload && sudo systemctl enable --now stacks-server
-sudo ufw allow 8090
+sudo ufw allow 18080
 ```
 
 After re-installing a rebuilt binary (`install … ~/.local/bin/stacks`),
