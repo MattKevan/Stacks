@@ -1418,9 +1418,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppSleepDisabled = YES;
-				INFOPLIST_KEY_NSBonjourServices = (
-					_stacks._tcp,
-				);
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Stacks discovers and shares book libraries on your local network.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1523,10 +1520,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = N7J3BYZ94H;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Stacks-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
-				INFOPLIST_KEY_NSBonjourServices = (
-					_stacks._tcp,
-				);
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Stacks discovers Stacks libraries on your local network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1576,9 +1571,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSAppSleepDisabled = YES;
-				INFOPLIST_KEY_NSBonjourServices = (
-					_stacks._tcp,
-				);
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Stacks discovers and shares book libraries on your local network.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1689,10 +1681,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = N7J3BYZ94H;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Stacks-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Stacks;
-				INFOPLIST_KEY_NSBonjourServices = (
-					_stacks._tcp,
-				);
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Stacks discovers Stacks libraries on your local network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

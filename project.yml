@@ -95,11 +95,11 @@ targets:
         # is why Bonjour discovery worked while manual hostname connects
         # failed with 'server unreachable'). Local-network exemption: .local
         # hostnames + link-local + LAN addresses, not arbitrary HTTP.
-        # Merged with the generated keys (GENERATE_INFOPLIST_FILE) — Xcode's
-        # INFOPLIST_KEY_ mechanism cannot emit the nested ATS dictionary.
+        # Merged with the generated keys (GENERATE_INFOPLIST_FILE). The ATS
+        # dictionary AND the NSBonjourServices array live in here: Xcode's
+        # INFOPLIST_KEY_ mechanism only encodes scalars, so both were silently
+        # dropped when declared as build settings.
         INFOPLIST_FILE: Stacks/Info.plist
-        INFOPLIST_KEY_NSBonjourServices:
-          - _stacks._tcp
         # App Nap suspends idle apps; for an app holding a USB/MTP session this
         # can let the host idle-suspend the device link (Kindle drops ~30s
         # after the last transfer). Opt out so the held session stays live.
@@ -147,8 +147,10 @@ targets:
           UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: >-
           Stacks discovers Stacks libraries on your local network.
-        INFOPLIST_KEY_NSBonjourServices:
-          - _stacks._tcp
+        # NSBonjourServices + ATS live in this plist: INFOPLIST_KEY_ only
+        # encodes scalars, so an array there is silently dropped — which left
+        # iOS refusing local-network access with no Settings entry at all.
+        INFOPLIST_FILE: Config/Stacks-iOS-Info.plist
     dependencies:
       - package: StacksPackage
         product: StacksKit

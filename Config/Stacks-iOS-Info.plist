@@ -5,18 +5,14 @@
 	<!-- Merged with the keys Xcode generates (GENERATE_INFOPLIST_FILE).
 	     These have to live in a real plist because INFOPLIST_KEY_ only
 	     encodes scalar settings: an array (NSBonjourServices) or a nested
-	     dictionary (App Transport Security) is silently dropped. -->
-	<!-- Bonjour service types this app browses/publishes. macOS 15+ gates
-	     local-network access behind the same declaration iOS uses; without
-	     it discovery and advertising are blocked. -->
+	     dictionary (App Transport Security) is silently dropped. Without
+	     NSBonjourServices, iOS refuses local-network access outright, never
+	     shows the permission prompt, and never lists the app under Settings
+	     > Privacy & Security > Local Network. -->
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_stacks._tcp</string>
 	</array>
-	<!-- ATS blocks cleartext HTTP to HOSTNAMES (raw IPs are exempt — which
-	     is why Bonjour discovery worked while manual hostname connects
-	     failed with 'server unreachable'). Local-network exemption: .local
-	     hostnames + link-local + LAN addresses, not arbitrary HTTP. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
