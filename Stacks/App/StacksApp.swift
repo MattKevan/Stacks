@@ -66,7 +66,7 @@ struct StacksApp: App {
             )
             .publishingLibraryWindowOpener(id: Self.libraryWindowID)
         } label: {
-            Image(systemName: "books.vertical")
+            Image(systemName: "book.closed")
         }
 
         Settings {
