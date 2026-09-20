@@ -27,9 +27,11 @@ struct IOSBookDetailView: View {
 
     var body: some View {
         // The shared inspector IS the metadata body: same grid, same cover,
-        // same HTML description handling. It reads the session's selection, so
-        // the row tap sets that before pushing.
-        BookInspectorView(session: session)
+        // same HTML description handling. The book is passed explicitly rather
+        // than followed via the session selection — the selection can change
+        // while this screen is open, which left the cover (and metadata) blank
+        // or showing a different book.
+        BookInspectorView(session: session, explicitBook: book)
             .navigationTitle(book.title)
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {

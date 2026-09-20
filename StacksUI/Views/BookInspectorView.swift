@@ -5,9 +5,23 @@ import SwiftUI
 /// collapsible Calibre source-data section rendered from the raw payload.
 struct BookInspectorView: View {
     @Bindable var session: LibrarySession
+    /// An explicit book to show. Nil (the Mac inspector's case) means "follow
+    /// the browser selection".
+    ///
+    /// The iOS detail screen passes the book it pushed: relying on the
+    /// selection there was fragile, because the selection can move or clear
+    /// while the screen is open (a facet change, a refresh, a second tap), and
+    /// the view would then show a different book or nothing at all.
+    var explicitBook: IndexedBook?
     @State private var coverImage: PlatformImage?
 
+    init(session: LibrarySession, explicitBook: IndexedBook? = nil) {
+        self.session = session
+        self.explicitBook = explicitBook
+    }
+
     private var book: IndexedBook? {
+        if let explicitBook { return explicitBook }
         guard let id = session.selection.first else { return nil }
         // The browser context (home or a connected remote) owns the
         // selection; its books list is the source.
