@@ -1,7 +1,7 @@
 import StacksKit
+import StacksDevices
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SwiftUI
 
 /// Browser for a connected device's books: table with DRM badges, Import

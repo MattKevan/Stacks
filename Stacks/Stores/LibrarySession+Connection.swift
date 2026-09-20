@@ -2,7 +2,6 @@ import Foundation
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 
 // MARK: - Single-library opening
 

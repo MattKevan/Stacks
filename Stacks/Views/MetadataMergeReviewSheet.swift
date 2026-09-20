@@ -1,9 +1,7 @@
-import AppKit
 import UniformTypeIdentifiers
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SwiftUI
 
 /// Per-field Keep / Use-fetched review for a fetched metadata candidate. The
@@ -13,8 +11,8 @@ import SwiftUI
 struct MetadataMergeReviewSheet: View {
     let plan: MetadataMergePlan
     @Binding var choices: [MetadataMergeItem.Field: MetadataMergeChoice]
-    let currentCover: NSImage?
-    let fetchedCover: NSImage?
+    let currentCover: PlatformImage?
+    let fetchedCover: PlatformImage?
     /// Alternative covers from the source (Google Books sizes); the user can
     /// pick one or upload their own file.
     let coverURLs: [URL]
@@ -115,22 +113,18 @@ struct MetadataMergeReviewSheet: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.3)))
     }
 
-    /// NSOpenPanel for the "Choose File…" cover upload: any image file.
+    /// Platform file chooser for the "Choose File…" cover upload: any image.
     private func chooseCoverFile() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose a Cover Image"
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.image]
-        if panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) {
+        Task {
+            guard let data = await PlatformServices.chooseImageFileData() else { return }
             onChooseCover(data)
         }
     }
 
-    private func coverThumbnail(_ image: NSImage?, caption: String) -> some View {
+    private func coverThumbnail(_ image: PlatformImage?, caption: String) -> some View {
         VStack(spacing: 2) {
             if let image {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
@@ -170,7 +164,7 @@ struct MetadataMergeReviewSheet: View {
 private struct CoverOptionThumbnail: View {
     let url: URL
     let onChoose: (Data) -> Void
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
 
     var body: some View {
         Button {
@@ -182,7 +176,7 @@ private struct CoverOptionThumbnail: View {
         } label: {
             Group {
                 if let image {
-                    Image(nsImage: image)
+                    Image(platformImage: image)
                         .resizable()
                         .scaledToFit()
                 } else {
@@ -198,7 +192,7 @@ private struct CoverOptionThumbnail: View {
         .help(url.absoluteString)
         .task(id: url) {
             if let data = try? await Self.fetch(url), !Task.isCancelled {
-                image = NSImage(data: data)
+                image = PlatformImage(data: data)
             }
         }
     }

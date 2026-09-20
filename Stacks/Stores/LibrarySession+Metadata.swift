@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import Foundation
 
 // MARK: - Editing, metadata enrichment

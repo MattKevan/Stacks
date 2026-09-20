@@ -1,10 +1,8 @@
-import AppKit
 import Foundation
 import Observation
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 
 /// A connected remote library, browsed over the sync protocol. The grid,
 /// table, and facet views are generic over `LibraryBrowser`, so a remote
@@ -139,8 +137,8 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         }
     }
 
-    private var coverCache: NSCache<NSString, NSImage> = {
-        let cache = NSCache<NSString, NSImage>()
+    private var coverCache: NSCache<NSString, PlatformImage> = {
+        let cache = NSCache<NSString, PlatformImage>()
         cache.countLimit = 512
         return cache
     }()
@@ -238,7 +236,7 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         guard let format else { return }
         do {
             let url = try await remote.downloadFormat(id: id, format: format.kind.lowercased())
-            NSWorkspace.shared.open(url)
+            PlatformServices.openExternally(url)
         } catch {
             // Surfaced via a session error in a follow-up; silently ignored v1.
         }
@@ -287,10 +285,9 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     }
 
     func selectInGrid(_ book: IndexedBook) {
-        let flags = NSEvent.modifierFlags
-        let modifier: GridSelectionModifier = flags.contains(.command)
+        let modifier: GridSelectionModifier = PlatformServices.isCommandDown
             ? .command
-            : (flags.contains(.shift) ? .shift : .none)
+            : (PlatformServices.isShiftDown ? .shift : .none)
         let result = GridSelectionSemantics.applying(
             click: book.id,
             modifier: modifier,
@@ -304,7 +301,7 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         }
     }
 
-    func coverImage(for book: IndexedBook) async -> NSImage? {
+    func coverImage(for book: IndexedBook) async -> PlatformImage? {
         if let cached = coverCache.object(forKey: book.id.uuidString as NSString) {
             return cached
         }
@@ -318,8 +315,8 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         // aliases into moire/grain — the local path's clarity came from this
         // step. Falls back to the raw image if the decode fails.
         let image = CoverDecoder.decode(data: data, maxPixelSize: 640)
-            .flatMap { NSImage(data: $0) }
-            ?? NSImage(data: data)
+            .flatMap { PlatformImage(data: $0) }
+            ?? PlatformImage(data: data)
         guard let image else { return nil }
         coverCache.setObject(image, forKey: book.id.uuidString as NSString)
         return image

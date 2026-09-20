@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SwiftUI
 
 /// Tile frames in the grid's named coordinate space, collected for marquee
@@ -145,7 +143,7 @@ struct CoverGridView: View {
                 marqueeCurrent = value.location
                 let rect = marqueeRect(start: value.startLocation, current: value.location)
                 let hit = GridSelectionSemantics.intersecting(tileFrames, rect: rect)
-                let add = NSEvent.modifierFlags.contains(.command)
+                let add = PlatformServices.isCommandDown
                 browser.selection = add ? browser.selection.union(hit) : hit
             }
             .onEnded { _ in
@@ -236,7 +234,7 @@ private struct CoverTile: View {
         self.session = session
     }
 
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
     @State private var isHovering = false
 
     var body: some View {
@@ -355,7 +353,7 @@ private struct CoverTile: View {
     @ViewBuilder
     private var cover: some View {
         if let image {
-            Image(nsImage: image)
+            Image(platformImage: image)
                 .resizable()
                 // High-quality interpolation: the default medium filter
                 // aliases (moire) when downscaling patterned covers.
@@ -409,10 +407,10 @@ private struct CoverTile: View {
         let hue = withUnsafeBytes(of: book.id.uuid) { bytes in
             Double(bytes[0]) / 256.0
         }
-        let light = NSColor(calibratedHue: hue, saturation: 0.10, brightness: 0.93, alpha: 1)
-        let dark = NSColor(calibratedHue: hue, saturation: 0.28, brightness: 0.45, alpha: 1)
+        let light = Color(hue: hue, saturation: 0.10, brightness: 0.93)
+        let dark = Color(hue: hue, saturation: 0.28, brightness: 0.45)
         return LinearGradient(
-            colors: [Color(light), Color(dark)],
+            colors: [light, dark],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )

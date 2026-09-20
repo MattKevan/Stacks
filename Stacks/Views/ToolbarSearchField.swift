@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// A system-styled search field (`NSSearchField`) used as a regular toolbar

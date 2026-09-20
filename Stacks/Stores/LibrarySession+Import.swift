@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import Foundation
 
 /// Live per-file progress for a local file import — the toolbar activity

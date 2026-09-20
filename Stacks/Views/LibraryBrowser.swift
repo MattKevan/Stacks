@@ -1,9 +1,7 @@
-import AppKit
 import Foundation
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 
 /// Toolbar sort order for the library browser (Finder-style). The core's
 /// cross-platform `BookSortOrder` (used by `BookBrowserModel`); the app alias
@@ -56,12 +54,12 @@ protocol LibraryBrowser: AnyObject {
     func refreshBooks() async
     /// The cover image for a book — the thumbnail cache for local libraries,
     /// a server fetch for remotes.
-    func coverImage(for book: IndexedBook) async -> NSImage?
+    func coverImage(for book: IndexedBook) async -> PlatformImage?
 }
 
 extension LibraryBrowser {
     /// Default: the local thumbnail pipeline (covers + format files on disk).
-    func coverImage(for book: IndexedBook) async -> NSImage? {
+    func coverImage(for book: IndexedBook) async -> PlatformImage? {
         guard let repository else { return nil }
         return await ThumbnailCache.shared.thumbnail(for: book, repository: repository)
     }

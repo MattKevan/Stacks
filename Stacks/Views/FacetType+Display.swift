@@ -1,7 +1,6 @@
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 
 extension FacetType {
     /// User-facing category name for the sidebar rows and the middle-column

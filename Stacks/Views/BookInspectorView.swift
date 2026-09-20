@@ -1,15 +1,13 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SwiftUI
 
 /// Right-side inspector: cover + metadata for the single selected book, plus a
 /// collapsible Calibre source-data section rendered from the raw payload.
 struct BookInspectorView: View {
     @Bindable var session: LibrarySession
-    @State private var coverImage: NSImage?
+    @State private var coverImage: PlatformImage?
 
     private var book: IndexedBook? {
         guard let id = session.selection.first else { return nil }
@@ -182,7 +180,7 @@ struct BookInspectorView: View {
     /// height, and paragraph spacing are set below (per the current style).
     /// Source-level semantic styles (bold, italic, headings) still win by
     /// CSS specificity.
-    private static let metadataHTMLFont = NSFont.systemFont(ofSize: 13)
+    private static let metadataHTMLFont = PlatformFont.systemFont(ofSize: 13)
 
     private static func htmlAttributed(_ value: String) -> AttributedString? {
         guard value.contains("<") || value.contains("&") else { return nil }
@@ -227,7 +225,7 @@ struct BookInspectorView: View {
     @ViewBuilder
     private func cover(_ book: IndexedBook) -> some View {
         if let coverImage {
-            Image(nsImage: coverImage)
+            Image(platformImage: coverImage)
                 .resizable()
                 .interpolation(.high)
                 .scaledToFit()

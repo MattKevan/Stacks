@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SwiftUI
 
 /// Candidate picker for ambiguous metadata lookups. Each candidate lists the
@@ -55,12 +53,12 @@ struct MetadataReviewSheet: View {
 /// placeholder. Never blocks the list.
 private struct Thumbnail: View {
     let url: URL?
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
 
     var body: some View {
         Group {
             if let image {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
@@ -78,7 +76,7 @@ private struct Thumbnail: View {
             let request = URLRequest(url: url)
             if let data = try? await URLSessionMetadataHTTPClient().data(from: request) {
                 guard !Task.isCancelled else { return }
-                image = NSImage(data: data)
+                image = PlatformImage(data: data)
             }
         }
     }

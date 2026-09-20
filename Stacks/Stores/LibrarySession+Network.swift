@@ -2,7 +2,6 @@ import Foundation
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 
 // MARK: - Remote library connections (Plan 4)
 

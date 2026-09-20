@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SwiftUI
 
 /// One queued book's pending edit from the batch metadata editor. `onSave`
@@ -132,8 +130,8 @@ struct MetadataEditorView: View {
     @State private var coverDownloadTask: Task<Void, Never>?
     @State private var fetchTask: Task<Void, Never>?
     @State private var isFetchingMetadata = false
-    @State private var currentCoverImage: NSImage?
-    @State private var fetchedCoverImage: NSImage?
+    @State private var currentCoverImage: PlatformImage?
+    @State private var fetchedCoverImage: PlatformImage?
     @State private var mergeError: String?
 
     private var currentBook: IndexedBook { books[currentIndex] }
@@ -449,7 +447,7 @@ extension MetadataEditorView {
         guard let coverURL = candidate.coverURL else { return }
         Task {
             guard let data = await Self.downloadBounded(coverURL), !Task.isCancelled else { return }
-            fetchedCoverImage = NSImage(data: data)
+            fetchedCoverImage = PlatformImage(data: data)
         }
     }
 
@@ -512,7 +510,7 @@ extension MetadataEditorView {
         coverDownloadTask = nil
         pendingCoverData = data
         coverPending = false
-        fetchedCoverImage = NSImage(data: data)
+        fetchedCoverImage = PlatformImage(data: data)
     }
 
     /// Best-effort bounded download (10s) for review thumbnails and the

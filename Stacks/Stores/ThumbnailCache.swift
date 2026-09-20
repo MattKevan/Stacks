@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import Foundation
 import QuickLookThumbnailing
 
@@ -14,7 +12,7 @@ import QuickLookThumbnailing
 ///   bounded footprint instead of GBs of decoded images;
 /// - the decode runs off the main actor on a SERIAL queue — a fast scroll
 ///   must not spawn one decode thread per visible cell;
-/// - the CGImage is wrapped into an NSImage on the main actor (NSImage is not
+/// - the CGImage is wrapped into an PlatformImage on the main actor (PlatformImage is not
 ///   Sendable / unsafe cross-thread);
 /// - `NSCache` (not a dictionary) auto-evicts under memory pressure, costed
 ///   in decoded pixel bytes.
@@ -31,7 +29,7 @@ final class ThumbnailCache {
         label: "com.mattkevan.stacks.cover-thumbnail.decode", qos: .utility
     )
 
-    private let cache = NSCache<NSString, NSImage>()
+    private let cache = NSCache<NSString, PlatformImage>()
 
     init() {
         // ~256 MB of decoded pixels; NSCache evicts under memory pressure.
@@ -39,7 +37,7 @@ final class ThumbnailCache {
         cache.countLimit = 1024
     }
 
-    func thumbnail(for book: IndexedBook, repository: LibraryRepository?) async -> NSImage? {
+    func thumbnail(for book: IndexedBook, repository: LibraryRepository?) async -> PlatformImage? {
         let key = cacheKey(for: book)
         if let cached = cache.object(forKey: key as NSString) { return cached }
 
@@ -49,10 +47,7 @@ final class ThumbnailCache {
                 .appending(path: book.relativePath, directoryHint: .isDirectory)
                 .appending(path: "cover.jpg")
             if let cgImage = await Self.decodeCover(url: coverURL) {
-                let image = NSImage(
-                    cgImage: cgImage,
-                    size: NSSize(width: cgImage.width, height: cgImage.height)
-                )
+                let image = PlatformImage.decoding(cgImage)
                 cache.setObject(image, forKey: key as NSString, cost: Self.cost(of: cgImage))
                 return image
             }
@@ -70,7 +65,7 @@ final class ThumbnailCache {
         )
         let image = await withCheckedContinuation { continuation in
             QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { representation, _ in
-                continuation.resume(returning: representation?.nsImage)
+                continuation.resume(returning: representation?.platformImage)
             }
         }
         if let image {
@@ -81,7 +76,7 @@ final class ThumbnailCache {
 
     /// Decodes the cover downsampled, off the main actor on the serial decode
     /// queue. Returns the small decoded CGImage; the caller wraps it in an
-    /// NSImage on the main actor.
+    /// PlatformImage on the main actor.
     private nonisolated static func decodeCover(url: URL) async -> CGImage? {
         await withCheckedContinuation { continuation in
             decodeQueue.async {
@@ -98,8 +93,8 @@ final class ThumbnailCache {
     }
 
     /// Conservative decoded-bytes estimate for a QL-provided image.
-    private static func cost(of image: NSImage) -> Int {
-        Int(image.size.width * image.size.height * 4)
+    private static func cost(of image: PlatformImage) -> Int {
+        image.decodedByteCost
     }
 
     /// Cache identity includes the cover + first-format content hashes, so an

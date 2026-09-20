@@ -3,7 +3,6 @@ import Observation
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SystemConfiguration
 
 /// Owns the in-process `LibraryServer` + Bonjour advertising driven by the

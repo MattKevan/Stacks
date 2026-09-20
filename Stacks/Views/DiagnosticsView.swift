@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import SwiftUI
 
 /// Diagnostics content, embedded in the Settings ▸ Diagnostics tab (it moved

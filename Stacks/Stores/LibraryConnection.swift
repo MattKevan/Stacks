@@ -1,8 +1,6 @@
-import AppKit
 import StacksKit
 import StacksSync
 import StacksServerKit
-import StacksDevices
 import Foundation
 import Observation
 
@@ -255,10 +253,9 @@ final class LibraryConnection {
     /// macOS grid-click semantics: plain click replaces, ⌘ toggles, ⇧ selects
     /// the anchor→clicked range. Reads the modifier flags at gesture time.
     func selectInGrid(_ book: IndexedBook) {
-        let flags = NSEvent.modifierFlags
-        let modifier: GridSelectionModifier = flags.contains(.command)
+        let modifier: GridSelectionModifier = PlatformServices.isCommandDown
             ? .command
-            : (flags.contains(.shift) ? .shift : .none)
+            : (PlatformServices.isShiftDown ? .shift : .none)
         let result = GridSelectionSemantics.applying(
             click: book.id,
             modifier: modifier,
@@ -321,7 +318,7 @@ final class LibraryConnection {
                 url = audioURL
             }
             guard let url else { return }
-            NSWorkspace.shared.open(url)
+            PlatformServices.openExternally(url)
         } catch {
             onError?(error.localizedDescription)
         }
@@ -330,7 +327,7 @@ final class LibraryConnection {
     func reveal(id: UUID) async {
         do {
             guard let url = try await coreRepository.bookFolderURL(id: id) else { return }
-            NSWorkspace.shared.activateFileViewerSelecting([url])
+            PlatformServices.reveal(url)
         } catch {
             onError?(error.localizedDescription)
         }
