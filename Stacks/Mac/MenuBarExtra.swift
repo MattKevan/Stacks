@@ -34,8 +34,7 @@ struct StacksMenuBarContent: View {
         }
         .keyboardShortcut(",", modifiers: .command)
 
-        Toggle("Open at Login", isOn: loginBinding)
-            .disabled(!loginItem.isEnabled && loginItem.error != nil)
+        loginItemControl
 
         Toggle("Hide Dock Icon", isOn: dockIconBinding)
 
@@ -45,7 +44,37 @@ struct StacksMenuBarContent: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q", modifiers: .command)
+        // The system state can change in System Settings behind the app's back,
+        // so it is re-read each time the menu is shown.
         .task { loginItem.refresh() }
+    }
+
+    /// The login item, rendered according to its real state rather than a plain
+    /// on/off toggle: a registered-but-unapproved item and an impossible one
+    /// both need to look different from "off", or the user is left guessing.
+    @ViewBuilder
+    private var loginItemControl: some View {
+        switch loginItem.state {
+        case .unavailable(let reason):
+            // Still clickable: the user may be able to fix the cause.
+            Button {
+                loginItem.setEnabled(true)
+            } label: {
+                Text("Open at Login Unavailable")
+            }
+            .help(reason)
+
+        case .requiresApproval:
+            Button {
+                loginItem.openLoginItemsSettings()
+            } label: {
+                Text("Approve Open at Login…")
+            }
+            .help("Allow Stacks in System Settings → General → Login Items.")
+
+        default:
+            Toggle("Open at Login", isOn: loginBinding)
+        }
     }
 
     /// Sharing is the app's own server for the open library. Toggling writes
@@ -79,7 +108,7 @@ struct StacksMenuBarContent: View {
 
     private var loginBinding: Binding<Bool> {
         Binding(
-            get: { loginItem.isEnabled },
+            get: { loginItem.state.isOn },
             set: { loginItem.setEnabled($0) }
         )
     }

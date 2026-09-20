@@ -24,28 +24,45 @@ enum AppLifecycle {
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
-    /// Raises the app's main library window and makes it key.
+    /// Raises the library window and makes it key.
     ///
-    /// Calling `openWindow(id:)` on a window that is already open does not
-    /// reliably lift it above other windows — it can stay buried behind them.
-    /// So after opening, the window is located and ordered to the front
-    /// explicitly. Runs on the next runloop turn, because a freshly created
-    /// window isn't in `NSApp.windows` until the scene has been realized.
+    /// `openWindow(id:)` re-creates a closed window but does *not* lift one
+    /// that is already open — it stays buried. The window therefore has to be
+    /// ordered front explicitly.
     ///
-    /// A window that is closed has to be re-created by the caller (`openWindow`);
-    /// this only raises one that exists.
-    static func focusLibraryWindow(titled title: String = "Stacks") {
+    /// It cannot be found by title: the `Window` scene is retitled with the
+    /// open library's name ("Test1 — Formats"), so a title match misses. The
+    /// reliable discriminator is the window that is neither a panel (the menu
+    /// bar extra, alerts) nor the Settings window, so it is chosen by exclusion
+    /// among windows that can become main.
+    ///
+    /// Runs after a turn of the runloop: a window created by `openWindow` in
+    /// the same call isn't in `NSApp.windows` until the scene is realized.
+    static func focusLibraryWindow() {
         activate()
         DispatchQueue.main.async {
-            let window = NSApplication.shared.windows.first { candidate in
-                candidate.title == title && candidate.canBecomeMain
-            } ?? NSApplication.shared.windows.first { $0.canBecomeMain }
-            guard let window else { return }
+            guard let window = libraryWindow() else { return }
             if window.isMiniaturized {
                 window.deminiaturize(nil)
             }
             window.makeKeyAndOrderFront(nil)
         }
+    }
+
+    /// The app's library window: a main-capable window that is not a panel
+    /// (extras, alerts) and not the Settings window.
+    private static func libraryWindow() -> NSWindow? {
+        let candidates = NSApplication.shared.windows.filter {
+            $0.canBecomeMain && !($0 is NSPanel)
+        }
+        // Prefer one that isn't the settings window. `showSettingsWindow:` has
+        // no class to test, so fall back to the scene's identifier when
+        // present, else the last candidate (frontmost-ish).
+        let nonSettings = candidates.filter { window in
+            let identifier = window.identifier?.rawValue ?? ""
+            return !identifier.localizedCaseInsensitiveContains("settings")
+        }
+        return nonSettings.last ?? candidates.last
     }
 
     /// Shows the app's Settings window. The `Settings` scene has no programmatic
@@ -75,23 +92,52 @@ enum AppLifecycle {
 @MainActor
 @Observable
 final class LoginItem {
-    private(set) var isEnabled: Bool
-    /// Set when the last toggle failed (unsigned build, missing bundle, the
-    /// user denied it in System Settings).
-    private(set) var error: String?
+    /// Mirrors `SMAppService`'s status. `.requiresApproval` is the state where
+    /// registration succeeded but the user must allow it in System Settings —
+    /// distinct from "on", and the most common cause of "I enabled it and
+    /// nothing happened".
+    enum State: Equatable {
+        case enabled
+        case disabled
+        case requiresApproval
+        /// Registration is impossible from here (build product, unsigned, or a
+        /// bundle that can move). `reason` explains why.
+        case unavailable(String)
+
+        var isOn: Bool { self == .enabled }
+    }
+
+    private(set) var state: State = .disabled
 
     private let service = SMAppService.mainApp
 
     init() {
-        isEnabled = SMAppService.mainApp.status == .enabled
+        refresh()
     }
 
-    /// Re-reads the system state — the app is not notified when the login item
-    /// changes in System Settings, so the menu re-reads when it appears.
+    /// Re-reads the system state. The app is not notified when the login item
+    /// changes in System Settings, so this is called when the menu is shown.
     func refresh() {
-        isEnabled = service.status == .enabled
+        switch service.status {
+        case .enabled: state = .enabled
+        case .requiresApproval: state = .requiresApproval
+        case .notRegistered: state = .disabled
+        case .notFound:
+            state = .unavailable(
+                "Move Stacks to your Applications folder to enable this."
+            )
+        @unknown default:
+            state = .disabled
+        }
     }
 
+    /// Registers or unregisters the login item.
+    ///
+    /// Never leaves the control in a dead state: a failure is reported, and the
+    /// control stays clickable so the user can retry after fixing the cause
+    /// (moving the app, approving it in System Settings). Latching it disabled
+    /// on the first failure — as this did — meant one failed attempt disabled
+    /// it permanently.
     func setEnabled(_ enabled: Bool) {
         do {
             if enabled {
@@ -99,10 +145,25 @@ final class LoginItem {
             } else {
                 try service.unregister()
             }
-            error = nil
         } catch let failure {
-            error = failure.localizedDescription
+            let description = failure.localizedDescription
+            state = .unavailable(description)
+            return
         }
         refresh()
+        // register() can succeed while awaiting approval; make that visible
+        // rather than silently showing "off".
+        if state == .disabled, enabled {
+            state = .requiresApproval
+        }
+    }
+
+    /// Opens System Settings → General → Login Items, where a
+    /// `.requiresApproval` item is waiting to be allowed.
+    func openLoginItemsSettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
+        ) else { return }
+        NSWorkspace.shared.open(url)
     }
 }
