@@ -84,6 +84,10 @@ final class AvahiAdvertiser: LibraryAdvertiser {
         }
         if process.isRunning {
             kill(process.processIdentifier, SIGKILL)
+            // Reap it: the signal is asynchronous, so without this the child
+            // can outlive stop() and a restart races the old publisher for the
+            // service name.
+            process.waitUntilExit()
         }
     }
 }
