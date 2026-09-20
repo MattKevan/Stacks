@@ -254,11 +254,23 @@ private struct IOSTargetDetail: View {
     let target: IOSBrowseTarget
     @Binding var path: [IOSBrowseTarget]
 
+    /// The facet value whose shelf is showing, if any.
+    @State private var openValue: String?
+
     var body: some View {
         Group {
             if case .category = target, let browser = session.browser {
-                FacetListView(browser: browser)
-                    .navigationTitle(target.title)
+                // iOS-specific list: a row pushes the filtered shelf, the
+                // filter sits under the title, and the back button returns.
+                // The shared FacetListView is the Mac's middle column and does
+                // none of that.
+                IOSFacetList(browser: browser) { value in
+                    openValue = value
+                }
+                .navigationTitle(target.title)
+                .navigationDestination(item: $openValue) { value in
+                    IOSFacetValueDetail(session: session, value: value)
+                }
             } else {
                 IOSGridDetail(session: session)
                     .navigationTitle(target.title)
@@ -279,7 +291,7 @@ private struct IOSTargetDetail: View {
 ///
 /// Tapping a cover selects it and pushes the detail screen (the Mac instead
 /// opens the file, since it has a right-hand inspector and a double-click).
-private struct IOSGridDetail: View {
+struct IOSGridDetail: View {
     @Bindable var session: LibrarySession
     @State private var searchText = ""
     /// Routed by id (`IndexedBook` is not Hashable) — resolved against the
@@ -300,11 +312,12 @@ private struct IOSGridDetail: View {
             if let browser = session.browser {
                 CoverGridView(browser: browser, session: session)
                     .navigationTitle(browser.name)
-                    .searchable(
-                        text: $searchText,
-                        placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "Search books"
-                    )
+                    // `.automatic` (the default) puts the field *under* the
+                    // large title, scrolling with it. Forcing
+                    // `.navigationBarDrawer(displayMode: .always)` kept it
+                    // permanently in the bar, where it drew over the title —
+                    // which is what made the shelf look broken.
+                    .searchable(text: $searchText, prompt: "Search books")
                     .onChange(of: searchText) { _, newValue in
                         browser.searchText = newValue
                     }

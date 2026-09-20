@@ -145,6 +145,7 @@
 		B9C764ACC74E223AE700F8CC /* OpenLibraryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86BEFE895851DA48B0C5888 /* OpenLibraryStoreTests.swift */; };
 		BE97C022D773D45C2B5A19B6 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 119B68CC9B0AC1BFA5330497 /* README.md */; };
 		C010A848B4F4ABDA96C265C7 /* MetadataLookupServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521E4489C3DCC4DD7BAD260A /* MetadataLookupServiceTests.swift */; };
+		C0E79A84B4C20626DD80E464 /* IOSFacetList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514144558342EDBAB57BA575 /* IOSFacetList.swift */; };
 		C10196DA54F64E8E96ACC11E /* LibrarySession+Metadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4194C8B8DA8F1553FAC5471 /* LibrarySession+Metadata.swift */; };
 		C14DCAFCE39DBDC195B923CE /* StacksSync in Frameworks */ = {isa = PBXBuildFile; productRef = D587D882F40427DBF9A1AA8C /* StacksSync */; };
 		C24DE552DAE6E319B00419DA /* Browse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92CA9F3A179E1CF519A952E3 /* Browse.swift */; };
@@ -190,6 +191,7 @@
 		F1CDAB18378D1ED229C7D362 /* DeviceBooksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB6667AF18FD651C7A53E901 /* DeviceBooksView.swift */; };
 		F2C8D5F6FD3939FEAD7C1B1F /* StacksUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1D8DB1A8C3BB6AC9C9676F3 /* StacksUITests.swift */; };
 		F2C99130FD3296CD4EE8DFEA /* LocalCatalogV3Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966ECC9E0CBBD766372A09A5 /* LocalCatalogV3Tests.swift */; };
+		F460611E18AFD5F77B19190D /* CoverReplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B6E634E4C4C1A9D846BC /* CoverReplayTests.swift */; };
 		F50C9915AC4B8E08871948A9 /* StacksDevices.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9DD0D337925F9F6391104FBF /* StacksDevices.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		F56F164E04409BB111C30FE6 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD6A4305F8A3E9484774124 /* DeviceRegistry.swift */; };
 		F95D10CC24DD428AAADB1069 /* LibrarySessionEnrichmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC556921C2B3CF1D1764C01F /* LibrarySessionEnrichmentTests.swift */; };
@@ -313,6 +315,7 @@
 		4C9BE6EA7993BD73ED2B716A /* IOSServerPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSServerPicker.swift; sourceTree = "<group>"; };
 		4FA91017A09CBBC270E6FA05 /* QueryCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryCommands.swift; sourceTree = "<group>"; };
 		50354CF07122CF0F77600E51 /* DeviceImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceImportService.swift; sourceTree = "<group>"; };
+		514144558342EDBAB57BA575 /* IOSFacetList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSFacetList.swift; sourceTree = "<group>"; };
 		521E4489C3DCC4DD7BAD260A /* MetadataLookupServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataLookupServiceTests.swift; sourceTree = "<group>"; };
 		54E6FE8774A4798581057198 /* MTPDataTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTPDataTypes.swift; sourceTree = "<group>"; };
 		551AA7E98EB8D49106B3CB37 /* TransferProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferProgressBar.swift; sourceTree = "<group>"; };
@@ -340,6 +343,7 @@
 		7FFE1DB1E7D93E31F8494773 /* StacksBonjour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StacksBonjour.swift; sourceTree = "<group>"; };
 		8044C4B6FD0472F710B3F3DE /* MetadataSourceDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSourceDecodingTests.swift; sourceTree = "<group>"; };
 		86EFDE65829A2E781BE0ABC0 /* PDFMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFMetadataTests.swift; sourceTree = "<group>"; };
+		88B0B6E634E4C4C1A9D846BC /* CoverReplayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverReplayTests.swift; sourceTree = "<group>"; };
 		8C64186CC06B5BFE1DC71781 /* MenuBarExtra.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarExtra.swift; sourceTree = "<group>"; };
 		8C76059CE163D9575C6CA974 /* LibraryBookmarkStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBookmarkStoreTests.swift; sourceTree = "<group>"; };
 		8FB6E76A05DE68ABB59765F2 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -498,6 +502,7 @@
 			isa = PBXGroup;
 			children = (
 				2D9A98C44A2B4F76A370764A /* IOSBookDetailView.swift */,
+				514144558342EDBAB57BA575 /* IOSFacetList.swift */,
 				2846270BB3A923EE60C1E23B /* IOSRootView.swift */,
 				4C9BE6EA7993BD73ED2B716A /* IOSServerPicker.swift */,
 				E5E4A2E462BB15FB7946166C /* IOSSessionBootstrap.swift */,
@@ -547,6 +552,7 @@
 		29294A5E859A4AEA8A7FD217 /* Journal */ = {
 			isa = PBXGroup;
 			children = (
+				88B0B6E634E4C4C1A9D846BC /* CoverReplayTests.swift */,
 				5BDCB50DCFA6F1CF7358C68D /* JournalIngestTests.swift */,
 				9400C60BA09EACA6C41BD5B3 /* JournalRebuildTests.swift */,
 				CC98AF7C936C0BB9F9E91A96 /* JournalTests.swift */,
@@ -1271,6 +1277,7 @@
 				46CB9DF080A658B2A6B3F10B /* CalibreReaderTests.swift in Sources */,
 				48EAA7CB1D7FD35B823FCE56 /* CompletionNotifierTests.swift in Sources */,
 				4347355897191882A8F80ED2 /* CoverDecoderTests.swift in Sources */,
+				F460611E18AFD5F77B19190D /* CoverReplayTests.swift in Sources */,
 				3782E062F747B7313E274F87 /* CoverThumbnailerTests.swift in Sources */,
 				CA16529F1330250F4541475B /* CoverUpdateTests.swift in Sources */,
 				87E43F58FE8ABB53B21A45F5 /* DeviceBookScannerTests.swift in Sources */,
@@ -1371,6 +1378,7 @@
 				DBDD4503D89BE2B1AF3DDFDA /* FacetListView.swift in Sources */,
 				CD3575105DFD2B811124232F /* FacetType+Display.swift in Sources */,
 				E87ECD4ACF4AB038DD2C08CB /* IOSBookDetailView.swift in Sources */,
+				C0E79A84B4C20626DD80E464 /* IOSFacetList.swift in Sources */,
 				8E14EB90A1E81547C0821748 /* IOSRootView.swift in Sources */,
 				8A6952666E6B98B94BA92136 /* IOSServerPicker.swift in Sources */,
 				2F65547E9E6508229291FA26 /* IOSSessionBootstrap.swift in Sources */,
