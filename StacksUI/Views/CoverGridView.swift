@@ -247,6 +247,15 @@ struct CoverGridView: View {
 }
 
 private struct CoverTile: View {
+    /// How a tile is opened differs per platform (tap vs double-click).
+    private static var openHint: String {
+        #if os(iOS)
+        "Tap to open"
+        #else
+        "Double-click to open"
+        #endif
+    }
+
     let book: IndexedBook
     let browser: any LibraryBrowser
     let isHome: Bool
@@ -281,13 +290,15 @@ private struct CoverTile: View {
                 }
                 .disabled(browser.isLibraryUnavailable)
             }
-            Button("Show in Finder") {
-                selectForContextMenu()
-                if let id = browser.selection.first {
-                    Task { await browser.reveal(id: id) }
+            if PlatformServices.supportsReveal {
+                Button("Show in Finder") {
+                    selectForContextMenu()
+                    if let id = browser.selection.first {
+                        Task { await browser.reveal(id: id) }
+                    }
                 }
+                .disabled(browser.isLibraryUnavailable)
             }
-            .disabled(browser.isLibraryUnavailable)
             if let session {
                 if let remote = browser as? RemoteLibraryBrowser {
                     Button("Import to Home Library") {
@@ -318,14 +329,12 @@ private struct CoverTile: View {
         .onHover { hovering in
             isHovering = hovering
         }
-        .onTapGesture(count: 2) {
-            Task { await browser.open(id: book.id) }
-        }
-        .onTapGesture {
-            browser.selectInGrid(book)
-        }
+        .gridTileTaps(
+            onOpen: { Task { await browser.open(id: book.id) } },
+            onSelect: { browser.selectInGrid(book) }
+        )
         .accessibilityLabel(book.title)
-        .accessibilityHint("Double-click to open")
+        .accessibilityHint(Self.openHint)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction {
             Task { await browser.open(id: book.id) }

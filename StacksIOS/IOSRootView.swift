@@ -52,6 +52,17 @@ struct IOSRootView: View {
                 session.presentImportReport()
             }
         }
+        // Import feedback. macOS routes this through notifications + the
+        // inspector; a sheet is the right affordance on iOS, where the user is
+        // already looking at the screen that just changed.
+        .sheet(isPresented: Binding(
+            get: { session.importReport != nil },
+            set: { presented in if !presented { session.importReport = nil } }
+        )) {
+            if let report = session.importReport {
+                IOSImportReportView(report: report) { session.importReport = nil }
+            }
+        }
     }
 
     @ViewBuilder
@@ -135,6 +146,54 @@ private struct IOSGridDetail: View {
                     .navigationTitle(browser.name)
             } else {
                 ContentUnavailableView("No Library", systemImage: "books.vertical")
+            }
+        }
+    }
+}
+
+/// The result of an import: the one-line summary plus the files that failed or
+/// were already in the library.
+private struct IOSImportReportView: View {
+    let report: ImportReport
+    let onDone: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Label(
+                    report.summary,
+                    systemImage: report.failed.isEmpty
+                        ? "checkmark.circle"
+                        : "exclamationmark.triangle"
+                )
+                if !report.failed.isEmpty {
+                    Section("Couldn’t Import") {
+                        ForEach(report.failed, id: \.sourceURL) { item in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.sourceURL.lastPathComponent)
+                                if case let .failed(message) = item.status {
+                                    Text(message)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+                if !report.duplicates.isEmpty {
+                    Section("Already in the Library") {
+                        ForEach(report.duplicates, id: \.sourceURL) { item in
+                            Text(item.sourceURL.lastPathComponent)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Import")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onDone)
+                }
             }
         }
     }

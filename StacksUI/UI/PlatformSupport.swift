@@ -13,10 +13,31 @@ public typealias PlatformImage = NSImage
 /// The font type for the few places that need one (HTML metadata style).
 public typealias PlatformFont = NSFont
 #elseif canImport(UIKit)
+import QuickLook
 import UIKit
 
 public typealias PlatformImage = UIImage
 public typealias PlatformFont = UIFont
+
+/// Retained for the lifetime of a QuickLook presentation: `QLPreviewController`
+/// holds its data source weakly, so an unowned one would deallocate before the
+/// sheet renders.
+final class FilePreviewDataSource: NSObject, QLPreviewControllerDataSource {
+    private let url: URL
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
+
+    func previewController(
+        _ controller: QLPreviewController,
+        previewItemAt index: Int
+    ) -> any QLPreviewItem {
+        url as NSURL
+    }
+}
 #endif
 
 /// The thin platform layer under the shared UI.
@@ -27,13 +48,53 @@ public typealias PlatformFont = UIFont
 /// supplies UIKit behaviour, and a no-op where the concept does not exist
 /// (there is no "reveal in Finder" on iOS).
 public enum PlatformServices {
-    /// Opens a file in the user's default external application.
+    #if canImport(UIKit)
+    /// Strong reference to the in-flight QuickLook data source (the controller
+    /// holds it weakly). Main-actor isolated because presentation is.
+    @MainActor
+    private static var previewDataSource: FilePreviewDataSource?
+    #endif
+
+    /// Opens a file. macOS hands it to the default app; iOS cannot hand an
+    /// arbitrary local library file to another app, so it presents QuickLook
+    /// over the active window instead.
     @MainActor
     public static func openExternally(_ url: URL) {
         #if canImport(AppKit)
         NSWorkspace.shared.open(url)
         #elseif canImport(UIKit)
-        UIApplication.shared.open(url)
+        guard let root = activeRootViewController() else { return }
+        let source = FilePreviewDataSource(url: url)
+        previewDataSource = source
+        let preview = QLPreviewController()
+        preview.dataSource = source
+        // Present from whatever is already on top (a context-menu sheet, a
+        // detail pane) so the preview isn't stranded behind it.
+        if let presented = root.presentedViewController {
+            presented.present(preview, animated: true)
+        } else {
+            root.present(preview, animated: true)
+        }
+        #endif
+    }
+
+    #if canImport(UIKit)
+    private static func activeRootViewController() -> UIViewController? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }?
+            .keyWindow?
+            .rootViewController
+    }
+    #endif
+
+    /// Whether `reveal` does anything. Views hide affordances like "Show in
+    /// Finder" where it doesn't (iOS).
+    public static var supportsReveal: Bool {
+        #if canImport(AppKit)
+        true
+        #else
+        false
         #endif
     }
 
@@ -107,6 +168,27 @@ public extension View {
             .onKeyPress(.delete) { trashFocused(); return .handled }
         #else
         self
+        #endif
+    }
+}
+
+public extension View {
+    /// Grid-tile tap behaviour. macOS follows Finder (double-click opens,
+    /// single click selects); touch platforms open on a single tap — the
+    /// discoverable idiom there. Selection stays available on iOS through the
+    /// tile's context menu, which selects before acting.
+    @ViewBuilder
+    func gridTileTaps(
+        onOpen: @escaping () -> Void,
+        onSelect: @escaping () -> Void
+    ) -> some View {
+        #if os(macOS)
+        self
+            .onTapGesture(count: 2) { onOpen() }
+            .onTapGesture { onSelect() }
+        #else
+        self
+            .onTapGesture { onOpen() }
         #endif
     }
 }
