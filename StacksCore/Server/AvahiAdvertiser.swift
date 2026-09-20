@@ -3,6 +3,10 @@ import Foundation
 #if !canImport(Network)
 // macOS-only content lives above; this file only exists on Linux.
 
+#if canImport(Glibc)
+import Glibc  // kill(2): SIGTERM is ignored by avahi-publish-service
+#endif
+
 /// Advertises a library over mDNS/DNS-SD on Linux via `avahi-publish-service`
 /// (the standard Avahi CLI, `avahi-utils` package). Publishes the same
 /// `_stacks._tcp` service with the same TXT records as the macOS
@@ -62,9 +66,25 @@ final class AvahiAdvertiser: LibraryAdvertiser {
         }
     }
 
+    /// Terminates the publisher.
+    ///
+    /// `avahi-publish-service` ignores SIGTERM, so a SIGTERM-only stop leaves
+    /// it running: systemd waits out `TimeoutStopSec` (90s) before SIGKILLing
+    /// the leftover on restart, and an ungraceful server exit orphans a live
+    /// `_stacks._tcp` record pointing at a dead port. Give the polite signal a
+    /// moment, then escalate.
     func stop() {
-        process?.terminate()
-        process = nil
+        guard let process else { return }
+        self.process = nil
+        guard process.isRunning else { return }
+        process.terminate()
+        let deadline = Date().addingTimeInterval(0.5)
+        while process.isRunning && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.02)
+        }
+        if process.isRunning {
+            kill(process.processIdentifier, SIGKILL)
+        }
     }
 }
 #endif
