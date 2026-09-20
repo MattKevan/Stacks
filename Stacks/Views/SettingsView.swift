@@ -64,9 +64,22 @@ struct SettingsView: View {
                 if let sharing = sharingService {
                     if sharing.isServingSync {
                         LabeledContent("Address", value: sharing.addressString)
-                        Button("Copy Address") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(sharing.addressString, forType: .string)
+                        if !sharing.ipAddressStrings.isEmpty {
+                            ForEach(sharing.ipAddressStrings, id: \.self) { address in
+                                LabeledContent("IP Address", value: address)
+                            }
+                        }
+                        HStack(spacing: 8) {
+                            Button("Copy Address") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(sharing.addressString, forType: .string)
+                            }
+                            if let ip = sharing.ipAddressStrings.first {
+                                Button("Copy IP Address") {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(ip, forType: .string)
+                                }
+                            }
                         }
                     } else if let error = sharing.lastError {
                         Text(error)

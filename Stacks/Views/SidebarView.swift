@@ -135,6 +135,8 @@ struct SidebarView: View {
     /// a whole-row tap sets the browser context.
     private struct SharedLibrariesSection: View {
         @Bindable var session: LibrarySession
+        /// The connected server whose addresses the Get Info alert shows.
+        @State private var infoServer: ServerInfo?
 
         var body: some View {
             Section("Shared") {
@@ -156,6 +158,20 @@ struct SidebarView: View {
                         }
                     }
                     .tag(SidebarItem.remote(browser.id, .allBooks))
+                    .contextMenu {
+                        Button("Get Info") { presentInfo(for: browser) }
+                    }
+                    .alert(
+                        infoServer?.title ?? "",
+                        isPresented: Binding(
+                            get: { infoServer != nil },
+                            set: { if !$0 { infoServer = nil } }
+                        )
+                    ) {
+                        Button("OK", role: .cancel) {}
+                    } message: {
+                        Text(infoServer?.message ?? "")
+                    }
                 }
                 ForEach(unconnectedDeferredToStacksUI) { library in
                     Button {
@@ -180,6 +196,29 @@ struct SidebarView: View {
                 .filter { library in
                     !session.remotes.contains { $0.id == library.id }
                 }
+        }
+
+        /// Get Info: the numeric address(es) of the connected server. The
+        /// connection host is already an IP for Bonjour-discovered servers; a
+        /// hand-typed host resolves here, falling back to the typed host when
+        /// the lookup fails.
+        private func presentInfo(for browser: RemoteLibraryBrowser) {
+            let addresses = LocalNetwork.ipAddresses(of: browser.host)
+            let shown = addresses.isEmpty ? [browser.host] : addresses
+            infoServer = ServerInfo(
+                id: browser.id,
+                title: browser.name,
+                message: shown.map { "http://\(LocalNetwork.urlHost($0)):\(browser.port)" }
+                    .joined(separator: "\n")
+            )
+        }
+
+        /// The Get Info alert's payload; the browser's id doubles as the
+        /// alert's identity, so re-asking while one is open replaces it.
+        private struct ServerInfo: Identifiable {
+            let id: UUID
+            let title: String
+            let message: String
         }
     }
 

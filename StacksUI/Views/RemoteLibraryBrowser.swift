@@ -15,6 +15,12 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     var name: String
     let remote: RemoteLibrary
 
+    /// Where the server lives, as resolved at connect time: Bonjour discovery
+    /// hands back the server's IP, a manual connect keeps the host as typed.
+    /// The sidebar's Get Info formats these into a visible URL.
+    let host: String
+    let port: Int
+
     var repository: LibraryRepository? { nil }
 
     private var remoteBooks: [IndexedBook] = []
@@ -23,6 +29,14 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     /// O(1) instead of O(n) — the array compare would cost as much as the work
     /// being cached.
     private var snapshotGeneration = 0
+
+    /// Opens a book from the local library, if it is there. Wired by the
+    /// session; nil in a context with no home library.
+    ///
+    /// Lets a remote shelf open a book that is *also* held locally from the
+    /// local file, instead of downloading a second copy — see `open(id:)`.
+    var openLocalCopy: ((UUID) async -> Bool)?
+
     var pendingDelete: Set<UUID>?
     var isLibraryUnavailable: Bool { false }
     var selection = Set<UUID>()
@@ -160,6 +174,8 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     init(discovered: DiscoveredLibrary, credential: RemoteLibrary.Credential?) throws {
         id = discovered.id
         name = discovered.name
+        host = discovered.host
+        port = discovered.port
         remote = try RemoteLibrary(configuration: .init(
             baseURL: discovered.baseURL,
             credential: credential,
@@ -304,7 +320,39 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         }
     }
 
+    /// Acting on a remote book.
+    ///
+    /// Opening a remote book in a reader is the wrong default — it is on
+    /// another machine, so the useful action is to bring it here. Three cases:
+    ///
+    /// 1. The book is also in the local library → open the **local** file. No
+    ///    download: a copy already exists.
+    /// 2. Otherwise → **download** it into the local library. That is what a
+    ///    double-click means on a remote shelf.
+    /// 3. No home library to download into → fall back to the previous
+    ///    behaviour (fetch and hand to a reader), since there is nowhere to
+    ///    put it.
     func open(id: UUID) async {
+        // 1. Local copy wins, even in the remote context.
+        if let openLocalCopy, await openLocalCopy(id) {
+            return
+        }
+        // 3. No local library to download into: open it directly.
+        guard canDownloadLocally?() ?? false else {
+            await openRemotely(id: id)
+            return
+        }
+        // 2. Download into the local library.
+        await downloadToLocalLibrary([id])
+    }
+
+    /// Whether a local library exists to download into. A closure, not a flag:
+    /// the home library can be opened or closed while a remote stays connected.
+    var canDownloadLocally: (() -> Bool)?
+
+    /// Fetches the book and hands its file to the platform (a reader, or
+    /// QuickLook on iOS). The old `open` behaviour, kept for the no-home case.
+    func openRemotely(id: UUID) async {
         guard let book = await remote.book(id: id) else { return }
         // Mixed-format books open their audiobook from the Audiobooks context.
         let format = (isShowingAudiobooks
@@ -315,9 +363,13 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
             let url = try await remote.downloadFormat(id: id, format: format.kind.lowercased())
             PlatformServices.openExternally(url)
         } catch {
-            // Surfaced via a session error in a follow-up; silently ignored v1.
+            noteUnreachable(error)
         }
     }
+
+    /// Downloads books from this remote into the local library through the
+    /// standard import pipeline. Wired by the session (it owns the import).
+    var downloadToLocalLibrary: ((Set<UUID>) async -> Void) = { _ in }
 
     func reveal(id: UUID) async {
         await open(id: id)

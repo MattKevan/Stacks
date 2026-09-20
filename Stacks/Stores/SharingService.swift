@@ -88,6 +88,13 @@ final class SharingService {
         addressString + "/opds"
     }
 
+    /// The LAN addresses by IP (e.g. `http://192.168.1.23:18080`), one per
+    /// interface — for devices that can't resolve `.local` names (Android,
+    /// Windows). IPv4 only: link-local IPv6 is unusable without a scope.
+    var ipAddressStrings: [String] {
+        LocalNetwork.myIPv4Addresses.map { "http://\(LocalNetwork.urlHost($0)):\(port)" }
+    }
+
     /// The LAN address clients connect to, e.g. `http://MattBook-Air.local:18080`.
     /// Uses the Bonjour-registered local hostname — other devices on the
     /// network resolve it as `<hostname>.local` over mDNS, which is exactly

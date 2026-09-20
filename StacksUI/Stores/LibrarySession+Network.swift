@@ -18,6 +18,7 @@ extension LibrarySession {
         }
         do {
             let remote = try RemoteLibraryBrowser(discovered: discovered, credential: effective)
+            wireTransferHooks(remote)
             try await remote.refreshBooks()
             // Dedupe: an already-connected server is just re-selected.
             if let existing = remotes.first(where: { $0.id == remote.id }) {
@@ -143,6 +144,30 @@ extension LibrarySession {
         // Finished (delivered, durably queued, or with failures): the toolbar
         // button returns to the idle check state.
         serverTransferActivity = nil
+    }
+
+    /// Wires a newly connected remote browser's transfer hooks.
+    ///
+    /// The browser owns "what does acting on a remote book mean" but cannot
+    /// reach the home library itself, so the session supplies both halves:
+    /// whether a local copy can be opened in place, and how to download into
+    /// the local library.
+    func wireTransferHooks(_ remote: RemoteLibraryBrowser) {
+        // A re-entrant check: `home.books` is the local catalogue, so this is
+        // an in-memory lookup, not a fetch.
+        remote.openLocalCopy = { [weak self] id in
+            guard let self, let home = self.home,
+                  home.books.contains(where: { $0.id == id }) else { return false }
+            await home.open(id: id)
+            return true
+        }
+        remote.canDownloadLocally = { [weak self] in self?.home != nil }
+        remote.downloadToLocalLibrary = { [weak self, weak remote] ids in
+            guard let self, let remote else { return }
+            let books = remote.books.filter { ids.contains($0.id) }
+            await self.importFromRemote(remote, books: books)
+            await self.notifyImportCompletion()
+        }
     }
 
     /// Downloads the selected remote books into the home library.

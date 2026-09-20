@@ -153,34 +153,10 @@ public final class LibraryDiscovery {
         host == "127.0.0.1" || host == "::1" || host == "localhost"
     }
 
-    /// This device's own IP addresses (IPv4 + IPv6, non-loopback, scope
-    /// suffixes stripped) — the app's own share can resolve via the LAN
-    /// interface to one of these instead of loopback.
-    private static let localAddresses: Set<String> = {
-        var addresses = Set<String>()
-        var interface: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&interface) == 0 else { return addresses }
-        defer { freeifaddrs(interface) }
-        var cursor = interface
-        while let current = cursor {
-            let family = current.pointee.ifa_addr.pointee.sa_family
-            if family == sa_family_t(AF_INET) || family == sa_family_t(AF_INET6) {
-                var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                if getnameinfo(
-                    current.pointee.ifa_addr,
-                    socklen_t(current.pointee.ifa_addr.pointee.sa_len),
-                    &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST
-                ) == 0 {
-                    // Match the discovery host form: scope suffix stripped.
-                    let value = String(cString: host).split(separator: "%").first.map(String.init)
-                        ?? String(cString: host)
-                    addresses.insert(value)
-                }
-            }
-            cursor = current.pointee.ifa_next
-        }
-        return addresses
-    }()
+    /// This device's own IP addresses — the app's own share can resolve via
+    /// the LAN interface to one of these instead of loopback, so discovery
+    /// never lists it.
+    private static let localAddresses: Set<String> = Set(LocalNetwork.myAddresses)
 
     private func resolve(_ result: NWBrowser.Result) {
         guard case .service(name: let name, type: _, domain: _, interface: _) = result.endpoint else {

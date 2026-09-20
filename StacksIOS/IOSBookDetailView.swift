@@ -21,9 +21,13 @@ struct IOSBookDetailView: View {
 
     private var remote: RemoteLibraryBrowser? { session.activeRemote }
     private var isRemoteContext: Bool { remote != nil }
-    private var isInHomeLibrary: Bool {
+    /// The book is in the local library, so it can be opened in place.
+    private var hasLocalCopy: Bool {
         session.home?.books.contains { $0.id == book.id } ?? false
     }
+    /// The book is in the *local* library (as opposed to only on a server).
+    /// Same test as `hasLocalCopy`, named for the send-to-server affordance.
+    private var isInHomeLibrary: Bool { hasLocalCopy }
 
     var body: some View {
         // The shared inspector IS the metadata body: same grid, same cover,
@@ -49,27 +53,32 @@ struct IOSBookDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 12) {
-                Button {
-                    Task { await open() }
-                } label: {
-                    Label("Open", systemImage: "book")
-                        .frame(maxWidth: .infinity)
+                // The primary action follows where the book actually is: a
+                // local copy opens (nothing to fetch), a remote-only book
+                // downloads. Showing both invited a pointless re-download of
+                // something already on the device.
+                if hasLocalCopy {
+                    Button {
+                        Task { await open() }
+                    } label: {
+                        Label("Open", systemImage: "book")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Button {
+                        Task { await downloadToPhone() }
+                    } label: {
+                        Label("Download", systemImage: "arrow.down.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isWorking || session.home == nil)
                 }
-                .buttonStyle(.borderedProminent)
 
-                if isRemoteContext || isInHomeLibrary {
+                if hasLocalCopy {
                     shareButton
                 }
-            }
-            if isRemoteContext {
-                Button {
-                    Task { await downloadToPhone() }
-                } label: {
-                    Label("Download to My Library", systemImage: "arrow.down.circle")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(isWorking || session.home == nil)
             }
 
             // A home book can be pushed to a connected server. With one
