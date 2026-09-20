@@ -1,4 +1,14 @@
 import Foundation
+
+/// The Bonjour service type every Stacks peer uses. Declared here so the
+/// advertiser, the client browser, and the `NSBonjourServices` plist entry all
+/// refer to one value — the plist is written by hand, so it can drift.
+public enum StacksBonjour {
+    /// The service type without a trailing dot (the form the plist and
+    /// `NWBrowser` both want).
+    public static let serviceType = "_stacks._tcp"
+}
+
 #if canImport(Network)
 import Network
 
@@ -20,7 +30,7 @@ public final class BonjourAdvertiser: LibraryAdvertiser, @unchecked Sendable {
     public init(displayName: String, libraryID: UUID, port: Int, serveSync: Bool = true, serveOPDS: Bool = true) {
         let service = NetService(
             domain: "local.",
-            type: "_stacks._tcp.",
+            type: "\(StacksBonjour.serviceType).",
             name: displayName,
             port: Int32(port)
         )

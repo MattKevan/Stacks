@@ -218,8 +218,10 @@ public extension View {
             .onTapGesture(count: 2) { onOpen() }
             .onTapGesture { onSelect() }
         #else
+        // A tap selects; the shell decides what a selection does (push the
+        // detail screen). Opening is an explicit action there.
         self
-            .onTapGesture { onOpen() }
+            .onTapGesture { onSelect() }
         #endif
     }
 }

@@ -76,7 +76,7 @@ public final class LibraryDiscovery {
         guard browser == nil else { return }
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
-        let browser = NWBrowser(for: .bonjour(type: "_stacks._tcp", domain: nil), using: parameters)
+        let browser = NWBrowser(for: .bonjour(type: StacksBonjourClient.serviceType, domain: nil), using: parameters)
         browser.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
                 switch state {

@@ -138,12 +138,15 @@ struct BookInspectorView: View {
                     }
                 }
 
-                Button("Edit Metadata…") {
-                    session.metadataEditQueue = [book]
-                }
-                .disabled(session.metadataEditQueue != nil)
-
+                // Editing and enrichment are home-only: the editor surfaces and
+                // the lookup-apply path are built for the home repository. iOS
+                // adds its own transfer actions on top of this view.
                 if !isRemoteContext {
+                    Button("Edit Metadata…") {
+                        session.metadataEditQueue = [book]
+                    }
+                    .disabled(session.metadataEditQueue != nil)
+
                     Button("Fetch Metadata…") {
                         Task { await session.fetchMetadata(for: book.id) }
                     }

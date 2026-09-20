@@ -262,9 +262,24 @@ private struct IOSTargetDetail: View {
 
 /// The cover shelf itself — shared `CoverGridView` (four fixed columns on iOS)
 /// with search and the browser-context title.
+///
+/// Tapping a cover selects it and pushes the detail screen (the Mac instead
+/// opens the file, since it has a right-hand inspector and a double-click).
 private struct IOSGridDetail: View {
     @Bindable var session: LibrarySession
     @State private var searchText = ""
+    /// Routed by id (`IndexedBook` is not Hashable) — resolved against the
+    /// browser's live list, so a metadata edit re-renders the same screen.
+    @State private var detailBookID: UUID?
+
+    private var selectedBookID: UUID? {
+        guard session.selection.count == 1 else { return nil }
+        return session.selection.first
+    }
+
+    private func book(withID id: UUID) -> IndexedBook? {
+        session.browser?.books.first { $0.id == id }
+    }
 
     var body: some View {
         Group {
@@ -278,6 +293,19 @@ private struct IOSGridDetail: View {
                     )
                     .onChange(of: searchText) { _, newValue in
                         browser.searchText = newValue
+                    }
+                    // A tap selects (CoverGridView handles that); follow the
+                    // selection with the detail screen. Guarded against
+                    // re-pushing the same book, and against marquee-style
+                    // multi-selection.
+                    .onChange(of: session.selection) { _, _ in
+                        guard let id = selectedBookID, detailBookID != id else { return }
+                        detailBookID = id
+                    }
+                    .navigationDestination(item: $detailBookID) { id in
+                        if let book = book(withID: id) {
+                            IOSBookDetailView(session: session, book: book)
+                        }
                     }
             } else {
                 ContentUnavailableView("No Library", systemImage: "books.vertical")
