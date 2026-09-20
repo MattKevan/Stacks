@@ -11,10 +11,35 @@ enum AppLifecycle {
     /// Applies the persisted Dock-icon preference.
     ///
     /// `.accessory` hides the Dock icon and drops the app out of Cmd-Tab —
-    /// the app keeps running and the menu bar extra stays reachable. Called at
-    /// launch and whenever the preference changes.
+    /// the app keeps running and the menu bar extra stays reachable.
+    ///
+    /// IMPORTANT: an accessory app never owns the app menu bar. If Stacks is
+    /// accessory while its window is visible, macOS leaves the *previous*
+    /// app's menu bar (Finder's, typically) in place and Stacks' File/Books/Edit
+    /// menus never appear. So the policy is a function of both the preference
+    /// and whether a window is showing: hidden Dock icon only takes effect once
+    /// the last window closes.
     static func applyActivationPolicy(hideDockIcon: Bool) {
-        NSApplication.shared.setActivationPolicy(hideDockIcon ? .accessory : .regular)
+        NSApplication.shared.setActivationPolicy(
+            hideDockIcon && !hasVisibleLibraryWindow ? .accessory : .regular
+        )
+    }
+
+    /// Whether the app currently shows a window that should own the menu bar.
+    static var hasVisibleLibraryWindow: Bool {
+        NSApplication.shared.windows.contains { $0.isVisible && $0.canBecomeMain }
+    }
+
+    /// Re-applies the policy in response to window/activation changes, so a
+    /// window opening promotes the app to `.regular` (menu bar + Dock icon)
+    /// and the last window closing demotes it back to `.accessory`.
+    static func refreshActivationPolicy(hideDockIcon: Bool) {
+        applyActivationPolicy(hideDockIcon: hideDockIcon)
+        if hasVisibleLibraryWindow {
+            // Taking the menu bar requires activation; otherwise the app is
+            // regular but another app still owns the bar.
+            activate()
+        }
     }
 
     /// Brings the app forward. Needed before opening a window while running as

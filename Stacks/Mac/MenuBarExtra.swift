@@ -101,7 +101,10 @@ struct StacksMenuBarContent: View {
             get: { settings.hideDockIcon },
             set: { newValue in
                 settings.hideDockIcon = newValue
-                AppLifecycle.applyActivationPolicy(hideDockIcon: newValue)
+                // Through the refresh path, not directly: with a window open
+                // the app must stay `.regular` to keep owning the menu bar, so
+                // the preference only takes effect once the window closes.
+                AppLifecycle.refreshActivationPolicy(hideDockIcon: newValue)
             }
         )
     }

@@ -29,11 +29,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Track window visibility so the activation policy can follow it: a
+        // visible window means the app must be `.regular` to own the menu bar
+        // (see `AppLifecycle.applyActivationPolicy`).
+        // `NSWindowDidBecomeVisibleNotification` does not exist; these are the
+        // window-lifecycle signals that exist and cover the transitions that
+        // matter (a window becoming main/key, or closing/minimising away).
+        for name in [
+            NSWindow.didBecomeKeyNotification,
+            NSWindow.didBecomeMainNotification,
+            NSWindow.willCloseNotification,
+            NSWindow.didMiniaturizeNotification,
+            NSWindow.didDeminiaturizeNotification,
+        ] {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowVisibilityChanged),
+                name: name, object: nil
+            )
+        }
+
         // The scene tree isn't built at `didFinishLaunching`; defer one runloop
         // turn so the opener closure has been published.
         DispatchQueue.main.async {
             AppDelegate.openLibraryWindow?()
             AppLifecycle.activate()
+            // The window now exists: promote out of accessory so the app owns
+            // the menu bar instead of leaving Finder's in place.
+            AppLifecycle.refreshActivationPolicy(hideDockIcon: AppSettings.hideDockIcon())
+        }
+    }
+
+    /// Re-evaluates the activation policy when a window appears or closes.
+    /// Deferred a turn, because the notification fires before the window's
+    /// visibility flag settles (and `willClose` before it actually closes).
+    @objc private func windowVisibilityChanged(_ notification: Notification) {
+        DispatchQueue.main.async {
+            AppLifecycle.refreshActivationPolicy(hideDockIcon: AppSettings.hideDockIcon())
+        }
+    }
+
+    /// Clicking the Dock icon (or otherwise re-activating) while a window is
+    /// open must not leave the app in accessory mode with another app's menu
+    /// bar showing.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        if AppLifecycle.hasVisibleLibraryWindow {
+            AppLifecycle.applyActivationPolicy(hideDockIcon: AppSettings.hideDockIcon())
         }
     }
 }
