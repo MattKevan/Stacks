@@ -24,11 +24,24 @@ public struct BookBrowserModel: Sendable {
 
     public init() {}
 
+    /// A cheap value describing the current filter+sort, used as a cache key.
+    /// Two models with the same inputs must produce the same books, so a view
+    /// can skip recomputing when this is unchanged.
+    public var cacheKey: String {
+        let facet = facetNavigation.activeFacet
+        let facetKey = facet.map { "\($0.type)|\($0.value)" } ?? "-"
+        return "\(searchText)\u{1}\(facetKey)\u{1}\(sortOrder.rawValue)\u{1}\(audioOnly)"
+    }
+
     /// Search + facet filtering applied client-side over the pulled books,
     /// then sorted. Facet filtering takes precedence over search text (a
     /// selected facet value narrows the category column, search is ignored
     /// while one is active). The audiobook filter (when active) applies on
     /// top of whichever of the two ran.
+    ///
+    /// O(n log n) in the library size, so callers should not invoke it per
+    /// view-render read: `RemoteLibraryBrowser` memoizes it against
+    /// `cacheKey` and the snapshot it was computed from.
     public func books(from remoteBooks: [IndexedBook]) -> [IndexedBook] {
         let filtered: [IndexedBook]
         if let facet = facetNavigation.activeFacet {

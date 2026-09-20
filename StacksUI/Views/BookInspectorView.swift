@@ -24,6 +24,16 @@ struct BookInspectorView: View {
         book?.rawMetadata.map(CalibreRawPresenter.rows(from:)) ?? []
     }
 
+    /// Identity for the cover-loading task. `book.id` is stable across metadata
+    /// edits; the cover hash is appended so replacing a cover reloads it. Never
+    /// nil for a selected book — which matters for remote books, whose hash is
+    /// always nil (the sync protocol never sends one), so keying on the hash
+    /// alone left the task effectively unkeyed.
+    private var coverTaskID: String {
+        guard let book else { return "none" }
+        return "\(book.id.uuidString):\(book.coverHash ?? "nohash")"
+    }
+
     var body: some View {
         Group {
             if let book {
@@ -32,11 +42,13 @@ struct BookInspectorView: View {
                 ContentUnavailableView("No Selection", systemImage: "sidebar.trailing")
             }
         }
-        // Keyed on the cover hash so a metadata edit that replaces the cover
-        // restarts the load (book.id is stable across edits). The state
-        // assignment happens AFTER the cancellation guard: a cancelled task
-        // must never overwrite a newer selection's cover.
-        .task(id: book?.coverHash) {
+        // Keyed on book identity + cover hash (see `coverTaskID`): a metadata
+        // edit that replaces the cover restarts the load, and moving between
+        // remote books (no hash) still re-runs instead of leaving the previous
+        // cover in place. The state assignment happens AFTER the cancellation
+        // guard: a cancelled task must never overwrite a newer selection's
+        // cover.
+        .task(id: coverTaskID) {
             guard let book else {
                 coverImage = nil
                 return

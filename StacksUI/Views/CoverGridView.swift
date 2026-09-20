@@ -30,14 +30,20 @@ struct CoverGridView: View {
     /// `.bottom` alignment = the "invisible shelf": every cover's bottom edge
     /// sits on the row's bottom line, and the row height expands to the tallest
     /// cover in it (shorter covers don't float).
+    /// Cover-to-cover gap, and the grid's outer padding. Kept together so the
+    /// shelf's rhythm stays consistent: the outer margin matches the inner
+    /// spacing rather than being larger.
+    private static let itemSpacing: CGFloat = 12
+    private static let gridPadding: CGFloat = 12
+
     private var columns: [GridItem] {
         #if os(iOS)
         Array(
-            repeating: GridItem(.flexible(), spacing: 16, alignment: .bottom),
+            repeating: GridItem(.flexible(), spacing: Self.itemSpacing, alignment: .bottom),
             count: Self.iOSColumnCount
         )
         #else
-        [GridItem(.adaptive(minimum: 120, maximum: 180), spacing: 16, alignment: .bottom)]
+        [GridItem(.adaptive(minimum: 120, maximum: 180), spacing: Self.itemSpacing, alignment: .bottom)]
         #endif
     }
 
@@ -124,12 +130,12 @@ struct CoverGridView: View {
 
     private var grid: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
+            LazyVGrid(columns: columns, spacing: Self.itemSpacing) {
                 ForEach(browser.books) { book in
                     tile(book)
                 }
             }
-            .padding(16)
+            .padding(Self.gridPadding)
         }
     }
 
@@ -346,10 +352,15 @@ private struct CoverTile: View {
         .accessibilityAction {
             Task { await browser.open(id: book.id) }
         }
-        // Keyed on the cover hash: a metadata edit that replaces the cover
-        // changes coverHash but keeps book.id, so a plain `.task` would never
-        // re-run and the tile would show the old cover until scrolled away.
-        .task(id: book.coverHash) {
+        // Keyed on the cover hash so a metadata edit that replaces the cover
+        // (same book.id, new hash) refreshes the tile instead of showing the
+        // old image until it scrolls away.
+        //
+        // Remote books have NO cover hash — the sync protocol streams journal
+        // commands and never a hash — so the key must stay stable for them
+        // rather than being a second nil. `id` is the stable fallback: local
+        // tiles still react to a changed hash, remote tiles load once.
+        .task(id: book.coverHash ?? "id:\(book.id)") {
             image = await browser.coverImage(for: book)
         }
     }

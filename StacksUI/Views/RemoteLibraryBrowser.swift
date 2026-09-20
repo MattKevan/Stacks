@@ -136,6 +136,16 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         }
     }
 
+    /// Longest edge for a downloaded cover, matching the local thumbnail
+    /// pipeline (`ThumbnailCache`) so remote and home covers render at the same
+    /// resolution.
+    private static let coverPixelSize = 640
+
+    /// Caps concurrent cover downloads across every remote browser. Four keeps
+    /// the grid filling briskly while leaving the connection free for the
+    /// sync pull.
+    private static let coverGate = AsyncGate(limit: 4)
+
     private var coverCache: NSCache<NSString, PlatformImage> = {
         let cache = NSCache<NSString, PlatformImage>()
         cache.countLimit = 512
@@ -166,9 +176,23 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
     /// (the home library filters in SQL; the remote has only the pulled
     /// snapshot, so the same UX is a local filter). The filter+sort itself is
     /// the core `BookBrowserModel` — identical results, now testable.
+    ///
+    /// Memoized: the view reads `books` many times per render pass, and the
+    /// filter+sort is O(n log n) in the library, so recomputing per read made
+    /// large remote libraries slow to scroll. The cache is keyed on the model's
+    /// inputs and the snapshot identity, so it invalidates exactly when either
+    /// changes.
     var books: [IndexedBook] {
-        model.books(from: remoteBooks)
+        let key = model.cacheKey
+        if let cached = booksCache, cached.key == key, cached.snapshot == remoteBooks {
+            return cached.books
+        }
+        let computed = model.books(from: remoteBooks)
+        booksCache = (key: key, snapshot: remoteBooks, books: computed)
+        return computed
     }
+
+    private var booksCache: (key: String, snapshot: [IndexedBook], books: [IndexedBook])?
     var selectionBooks: [IndexedBook] { books.filter { selection.contains($0.id) } }
 
     var authors: [(value: String, count: Int)] { facetCounts(.author) }
@@ -304,8 +328,19 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         if let cached = coverCache.object(forKey: book.id.uuidString as NSString) {
             return cached
         }
-        guard book.coverHash != nil,
-              let data = try? await remote.downloadCover(id: book.id) else {
+        // Throttled: a grid of visible tiles would otherwise open one cover
+        // request per tile at once, saturating the connection and starving the
+        // sync pull that refreshes the list. Covers are decorative, so they
+        // queue behind a small concurrency limit.
+        await Self.coverGate.wait()
+        defer { Task { await Self.coverGate.signal() } }
+        // NO `coverHash` guard here. `coverHash` is nil for every remote book:
+        // the sync API streams journal COMMANDS, and the client's projector
+        // rebuilds title/authors/formats from them but never a cover hash. The
+        // old guard therefore rejected every remote cover — which is why the
+        // grid could show one (a stale cache entry) while the detail view never
+        // could. The server is the authority: a 404 means no cover.
+        guard let data = try? await remote.downloadCover(id: book.id), !data.isEmpty else {
             return nil
         }
         // Downsample through the same ImageIO pipeline as local covers
@@ -313,7 +348,7 @@ final class RemoteLibraryBrowser: LibraryBrowser, Identifiable {
         // the full-res bytes and letting SwiftUI single-pass downscale them
         // aliases into moire/grain — the local path's clarity came from this
         // step. Falls back to the raw image if the decode fails.
-        let image = CoverDecoder.decode(data: data, maxPixelSize: 640)
+        let image = CoverDecoder.decode(data: data, maxPixelSize: Self.coverPixelSize)
             .flatMap { PlatformImage(data: $0) }
             ?? PlatformImage(data: data)
         guard let image else { return nil }

@@ -28,6 +28,7 @@
 		15929EB4FF99034BC0CC656A /* StacksServerKit in Frameworks */ = {isa = PBXBuildFile; productRef = DACA5FF1470EC936FDC5E9EA /* StacksServerKit */; };
 		159D7B9BBFBEDBD7CC7CAE80 /* fixture.mobi in Resources */ = {isa = PBXBuildFile; fileRef = 47E662E0590799F9F80EBCB8 /* fixture.mobi */; };
 		15F199F61578A474EF99DAE9 /* RemoteConnectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726C48859F29F4A1CD0B37F9 /* RemoteConnectionViews.swift */; };
+		160B06A5FFF752227D8ED3F1 /* AsyncGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACF58FAE733C1B563ACEB7FB /* AsyncGate.swift */; };
 		189D7375917CE752D0B06408 /* TransferProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 551AA7E98EB8D49106B3CB37 /* TransferProgressBar.swift */; };
 		19E6C47A75A32855B62C9572 /* StacksBonjour.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FFE1DB1E7D93E31F8494773 /* StacksBonjour.swift */; };
 		1CC1FB9F136A4DCA52E01FAA /* RemoteConnectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726C48859F29F4A1CD0B37F9 /* RemoteConnectionViews.swift */; };
@@ -43,6 +44,7 @@
 		25CFCC8AC3C99384466CCBC1 /* QueryCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FA91017A09CBBC270E6FA05 /* QueryCommands.swift */; };
 		266AD5A47156FE20078F723C /* MobiSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA800E7A71493059556AEB16 /* MobiSmokeTests.swift */; };
 		26E9232F6D39CB389FBFD5CE /* SystemNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7AF07B155DEDE23D6E69908 /* SystemNotifier.swift */; };
+		29E2793EEA62CF41B12CBFE0 /* AsyncGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACF58FAE733C1B563ACEB7FB /* AsyncGate.swift */; };
 		2B25AD8A7C374FB56F31794C /* CalibreImportServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59CE2C952CE8D367753CB9B0 /* CalibreImportServiceTests.swift */; };
 		2D58ED652DD5E5A176683C9F /* LibrarySession+Import.swift in Sources */ = {isa = PBXBuildFile; fileRef = E42C8668F66DCAE30545E4D2 /* LibrarySession+Import.swift */; };
 		2DBB715FA6884D23DCEBA537 /* RemoteCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4C222B60072D83634CEA44 /* RemoteCredentials.swift */; };
@@ -362,6 +364,7 @@
 		AC13B3DF39A5461BB0E58053 /* BonjourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourTests.swift; sourceTree = "<group>"; };
 		AC556921C2B3CF1D1764C01F /* LibrarySessionEnrichmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySessionEnrichmentTests.swift; sourceTree = "<group>"; };
 		ACAFD3931D931111027CF35F /* LibraryBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBrowser.swift; sourceTree = "<group>"; };
+		ACF58FAE733C1B563ACEB7FB /* AsyncGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncGate.swift; sourceTree = "<group>"; };
 		AF095A91359CD62AFFBB0DC6 /* MTPCodes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTPCodes.swift; sourceTree = "<group>"; };
 		AF4C222B60072D83634CEA44 /* RemoteCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCredentials.swift; sourceTree = "<group>"; };
 		B0837129C835CD19B2237E4F /* SharedLibrariesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLibrariesView.swift; sourceTree = "<group>"; };
@@ -518,6 +521,7 @@
 		26C51220ECF6F76E55320C5A /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				ACF58FAE733C1B563ACEB7FB /* AsyncGate.swift */,
 				D215AB3366743C07FE0185B7 /* PlatformSupport.swift */,
 				7AC764F384B1CCD0275C301C /* SessionEnvironment.swift */,
 				7FFE1DB1E7D93E31F8494773 /* StacksBonjour.swift */,
@@ -1203,6 +1207,7 @@
 			files = (
 				FCBD4EBC763D668DC6AB1C48 /* AppLifecycle.swift in Sources */,
 				EB205EBE2F579048372EE108 /* AppSettings.swift in Sources */,
+				160B06A5FFF752227D8ED3F1 /* AsyncGate.swift in Sources */,
 				9E0124B17841390934852DFA /* BookInspectorView.swift in Sources */,
 				7D2586C894617C47C7AC5B3B /* BookTableView.swift in Sources */,
 				381DD4FE3A4187C370751F5E /* CalibreImportView.swift in Sources */,
@@ -1358,6 +1363,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				030C61E184F2C4343C066396 /* AppSettings.swift in Sources */,
+				29E2793EEA62CF41B12CBFE0 /* AsyncGate.swift in Sources */,
 				2FE7A6980735AE87333A8EB1 /* BookInspectorView.swift in Sources */,
 				048E192D4BE7EB49B8CB4210 /* CalibreImportView.swift in Sources */,
 				3177175AFB665F5659D8C258 /* CoverGridView.swift in Sources */,
