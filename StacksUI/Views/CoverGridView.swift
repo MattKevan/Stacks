@@ -26,12 +26,25 @@ struct CoverGridView: View {
         self.session = session
     }
 
-    private let columns = [
-        // `.bottom` alignment = the "invisible shelf": every cover's bottom
-        // edge sits on the row's bottom line, and the row height expands to
-        // the tallest cover in it (shorter covers don't float).
-        GridItem(.adaptive(minimum: 120, maximum: 180), spacing: 16, alignment: .bottom)
-    ]
+    /// macOS: an adaptive shelf that reflows with the window. iOS: a fixed
+    /// four-column grid — covers are finger targets there, not reflowing tiles.
+    ///
+    /// `.bottom` alignment = the "invisible shelf": every cover's bottom edge
+    /// sits on the row's bottom line, and the row height expands to the tallest
+    /// cover in it (shorter covers don't float).
+    private var columns: [GridItem] {
+        #if os(iOS)
+        Array(
+            repeating: GridItem(.flexible(), spacing: 16, alignment: .bottom),
+            count: Self.iOSColumnCount
+        )
+        #else
+        [GridItem(.adaptive(minimum: 120, maximum: 180), spacing: 16, alignment: .bottom)]
+        #endif
+    }
+
+    /// The iOS grid is a fixed four columns.
+    private static let iOSColumnCount = 4
 
     @State private var marqueeStart: CGPoint?
     @State private var marqueeCurrent: CGPoint?
@@ -40,9 +53,13 @@ struct CoverGridView: View {
     @FocusState private var focusedID: UUID?
 
     /// Estimated grid columns for Up/Down navigation (adaptive minimum item
-    /// width ≈ 120pt + 16pt spacing + padding).
+    /// width ≈ 120pt + 16pt spacing + padding), or the fixed iOS count.
     private var estimatedColumns: Int {
+        #if os(iOS)
+        Self.iOSColumnCount
+        #else
         Int(max(1, (gridWidth / 140).rounded(.down)))
+        #endif
     }
 
     var body: some View {
@@ -89,12 +106,12 @@ struct CoverGridView: View {
                     browser.selection = [newValue]
                 }
             }
-            .onKeyPress(.leftArrow) { moveFocus(by: -1); return .handled }
-            .onKeyPress(.rightArrow) { moveFocus(by: 1); return .handled }
-            .onKeyPress(.upArrow) { moveFocus(by: -estimatedColumns); return .handled }
-            .onKeyPress(.downArrow) { moveFocus(by: estimatedColumns); return .handled }
-            .onKeyPress(.return) { openFocused(); return .handled }
-            .onKeyPress(.delete) { trashFocused(); return .handled }
+            .gridKeyboardNavigation(
+                columns: { estimatedColumns },
+                moveFocus: { moveFocus(by: $0) },
+                openFocused: { openFocused() },
+                trashFocused: { trashFocused() }
+            )
     }
 
     private var grid: some View {

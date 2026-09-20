@@ -27,6 +27,20 @@ final class MacFeatures {
     }
 }
 
+extension SystemNotifier {
+    /// "Sent to device" summary with the unsent items listed (truncated).
+    /// macOS-only: `SendReport` belongs to the device layer.
+    static func postSendCompletion(report: SendReport) async -> Bool {
+        var body = report.summary
+        let issues = report.noCompatible + report.failed
+        if !issues.isEmpty {
+            let names = issues.prefix(4).map(\.title)
+            body += " — not sent: " + truncated(names, extra: issues.count - names.count)
+        }
+        return await post(title: "Sent to device", body: body)
+    }
+}
+
 // MARK: - macOS-only session actions
 
 extension LibrarySession {

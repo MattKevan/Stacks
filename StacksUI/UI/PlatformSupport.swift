@@ -86,6 +86,31 @@ public enum PlatformServices {
     }
 }
 
+public extension View {
+    /// Grid keyboard navigation (arrows / Return / Delete). `onKeyPress` is a
+    /// macOS/iPadOS API, so on iOS this compiles to the view unchanged — the
+    /// touch UI has no arrow keys to handle.
+    @ViewBuilder
+    func gridKeyboardNavigation(
+        columns: @escaping () -> Int,
+        moveFocus: @escaping (Int) -> Void,
+        openFocused: @escaping () -> Void,
+        trashFocused: @escaping () -> Void
+    ) -> some View {
+        #if os(macOS)
+        self
+            .onKeyPress(.leftArrow) { moveFocus(-1); return .handled }
+            .onKeyPress(.rightArrow) { moveFocus(1); return .handled }
+            .onKeyPress(.upArrow) { moveFocus(-columns()); return .handled }
+            .onKeyPress(.downArrow) { moveFocus(columns()); return .handled }
+            .onKeyPress(.return) { openFocused(); return .handled }
+            .onKeyPress(.delete) { trashFocused(); return .handled }
+        #else
+        self
+        #endif
+    }
+}
+
 public extension Image {
     /// `Image(nsImage:)` / `Image(uiImage:)` behind one name.
     init(platformImage: PlatformImage) {

@@ -1,5 +1,4 @@
 import StacksKit
-import StacksDevices
 import StacksSync
 import StacksServerKit
 import Foundation
@@ -29,18 +28,10 @@ enum SystemNotifier {
         return await post(title: "Import complete", body: body)
     }
 
-    /// "Sent to device" summary with the unsent items listed (truncated).
-    static func postSendCompletion(report: SendReport) async -> Bool {
-        var body = report.summary
-        let issues = report.noCompatible + report.failed
-        if !issues.isEmpty {
-            let names = issues.prefix(4).map(\.title)
-            body += " — not sent: " + truncated(names, extra: issues.count - names.count)
-        }
-        return await post(title: "Sent to device", body: body)
-    }
+    // The "Sent to device" variant lives in the macOS shell: `SendReport` is
+    // part of the device layer (see `MacFeatures.swift`).
 
-    private static func truncated(_ names: [String], extra: Int) -> String {
+    static func truncated(_ names: [String], extra: Int) -> String {
         var joined = names.joined(separator: ", ")
         if extra > 0 {
             joined += "… and \(extra) more"

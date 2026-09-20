@@ -63,7 +63,12 @@ targets:
     type: application
     platform: macOS
     sources:
+      # `Stacks` is the macOS shell (app entry, commands/settings, the
+      # device + sharing features, and the AppKit table/toolbar chrome).
+      # `StacksUI` is the shared, platform-free UI compiled into both this
+      # target and the iOS app: same sources, no module boundary to fight.
       - Stacks
+      - StacksUI
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.Stacks
