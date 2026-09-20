@@ -172,6 +172,36 @@ sudo ufw allow 18080
 
 After re-installing a rebuilt binary (`install … ~/.local/bin/stacks`),
 restart the service to pick it up: `sudo systemctl restart stacks-server`.
+`Scripts/update-server.sh` does all of that in one step — see below.
+
+### Update
+
+`Scripts/update-server.sh` pulls the branch, rebuilds `stacks`, installs the
+binary, and restarts the unit:
+
+```bash
+./Scripts/update-server.sh
+```
+
+It reads the unit's `ExecStart` for the install path and its `--port` for the
+post-restart HTTP check, so it follows the service if you move either. When
+the built binary is byte-identical to the installed one the restart is
+skipped, which makes it safe to run unattended (cron, a `systemd` timer):
+
+```
+# /etc/systemd/system/stacks-update.service
+[Unit]
+Description=Update the Stacks library server
+
+[Service]
+Type=oneshot
+User=matt
+ExecStart=/home/matt/stacks/Scripts/update-server.sh
+```
+
+Useful flags: `--dry-run`, `--no-pull`, `--no-build`, `--no-restart`,
+`--force` (restart even when unchanged). `REPO_DIR`, `BRANCH`, `UNIT`,
+`BIN_DEST`, and `PORT` override the discovered defaults.
 
 ## Verify
 
