@@ -1,6 +1,6 @@
-// Security-scoped bookmarks are an Apple-platform API (`.withSecurityScope`);
-// the headless Linux server opens libraries by path and never needs them.
-#if canImport(Darwin)
+// Security-scoped bookmarks are macOS-only; elsewhere a plain path is stored
+// instead (see `LibraryURLSerialization`). The headless Linux server opens
+// libraries by path and needs neither.
 import Foundation
 
 /// Persists the set of libraries currently open in the app: security-scoped
@@ -25,11 +25,7 @@ public struct OpenLibraryStore: @unchecked Sendable {
     /// Throws when the bookmark cannot be created (e.g. the URL is not
     /// security-scope-capable).
     public func save(_ url: URL, for libraryID: UUID, name: String) throws {
-        let data = try url.bookmarkData(
-            options: .withSecurityScope,
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        )
+        let data = try LibraryURLSerialization.encode(url)
         var bookmarks = defaults.dictionary(forKey: bookmarksKey) as? [String: Data] ?? [:]
         bookmarks[libraryID.uuidString] = data
         defaults.set(bookmarks, forKey: bookmarksKey)
@@ -47,14 +43,7 @@ public struct OpenLibraryStore: @unchecked Sendable {
         else {
             throw LibraryBookmarkError.notFound(libraryID)
         }
-        var stale = false
-        let url = try URL(
-            resolvingBookmarkData: data,
-            options: .withSecurityScope,
-            relativeTo: nil,
-            bookmarkDataIsStale: &stale
-        )
-        return ResolvedLibraryBookmark(url: url, isStale: stale)
+        return try LibraryURLSerialization.decode(data, libraryID: libraryID)
     }
 
     /// Removes the library from the open set entirely: bookmark, display name,
@@ -111,4 +100,3 @@ public struct OpenLibraryStore: @unchecked Sendable {
             }
     }
 }
-#endif

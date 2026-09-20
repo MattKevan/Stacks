@@ -1,6 +1,4 @@
 import StacksKit
-import StacksSync
-import StacksServerKit
 import SwiftUI
 
 /// Tile frames in the grid's named coordinate space, collected for marquee
@@ -46,6 +44,16 @@ struct CoverGridView: View {
     /// The iOS grid is a fixed four columns.
     private static let iOSColumnCount = 4
 
+    /// iOS has no drag-and-drop from a file manager, so the hint points at the
+    /// toolbar button instead.
+    private static var emptyShelfHint: String {
+        #if os(iOS)
+        "Tap Add Books in the toolbar to import files."
+        #else
+        "Drag ebook files here or use Add Books to import."
+        #endif
+    }
+
     @State private var marqueeStart: CGPoint?
     @State private var marqueeCurrent: CGPoint?
     @State private var tileFrames: [UUID: CGRect] = [:]
@@ -87,7 +95,7 @@ struct CoverGridView: View {
                         ContentUnavailableView(
                             "No Books",
                             systemImage: "books.vertical",
-                            description: Text("Drag ebook files here or use Add Books to import.")
+                            description: Text(Self.emptyShelfHint)
                         )
                     }
                 }

@@ -249,13 +249,5 @@ struct SidebarView: View {
     }
 }
 
-private struct LibrarySessionKey: EnvironmentKey {
-    static let defaultValue: LibrarySession? = nil
-}
-
-extension EnvironmentValues {
-    var librarySession: LibrarySession? {
-        get { self[LibrarySessionKey.self] }
-        set { self[LibrarySessionKey.self] = newValue }
-    }
-}
+// `EnvironmentValues.librarySession` now lives in StacksUI
+// (UI/SessionEnvironment.swift) because shared views read it.

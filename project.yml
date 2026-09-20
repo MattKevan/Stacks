@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.new-industries
   deploymentTarget:
     macOS: "26.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 
 configs:
@@ -114,6 +115,42 @@ targets:
       - package: StacksPackage
         product: StacksServerKit
 
+  # The iOS app: same code as the Mac except the shell. It compiles StacksUI
+  # (the shared views/stores) plus its own iPhone/iPad shells, and deliberately
+  # does NOT include StacksDevices (MTP) or StacksServerKit (it is a client).
+  StacksIOS:
+    type: application
+    platform: iOS
+    sources:
+      - StacksIOS
+      - StacksUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.new-industries.Stacks
+        PRODUCT_NAME: Stacks
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: N7J3BYZ94H
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: Stacks
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: >-
+          UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft
+          UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: >-
+          Stacks discovers Stacks libraries on your local network.
+        INFOPLIST_KEY_NSBonjourServices:
+          - _stacks._tcp
+    dependencies:
+      - package: StacksPackage
+        product: StacksKit
+      - package: StacksPackage
+        product: StacksSync
+
   StacksCoreTests:
     type: bundle.unit-test
     platform: macOS
@@ -185,6 +222,16 @@ targets:
       - target: Stacks
 
 schemes:
+  StacksIOS:
+    build:
+      targets:
+        StacksIOS: all
+    run:
+      config: Debug
+    analyze:
+      config: Debug
+    archive:
+      config: Release
   Stacks:
     build:
       targets:

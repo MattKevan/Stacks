@@ -2,7 +2,6 @@ import Foundation
 import Observation
 import StacksKit
 import StacksSync
-import StacksServerKit
 
 /// A connected remote library, browsed over the sync protocol. The grid,
 /// table, and facet views are generic over `LibraryBrowser`, so a remote

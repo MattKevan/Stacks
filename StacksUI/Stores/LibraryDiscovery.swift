@@ -5,7 +5,6 @@ import Network
 import Observation
 import StacksKit
 import StacksSync
-import StacksServerKit
 
 /// One library discovered on the LAN via Bonjour (`_stacks._tcp`), or typed
 /// in manually as host:port.

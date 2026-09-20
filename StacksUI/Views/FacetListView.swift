@@ -1,6 +1,4 @@
 import StacksKit
-import StacksSync
-import StacksServerKit
 import SwiftUI
 
 /// The middle column of the 3-column browser: the value list for the active

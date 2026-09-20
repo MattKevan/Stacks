@@ -1,6 +1,4 @@
 import StacksKit
-import StacksSync
-import StacksServerKit
 import SwiftUI
 
 /// Right-side inspector: cover + metadata for the single selected book, plus a

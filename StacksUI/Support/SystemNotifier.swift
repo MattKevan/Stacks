@@ -1,6 +1,4 @@
 import StacksKit
-import StacksSync
-import StacksServerKit
 import Foundation
 
 /// Posts completion feedback as standard macOS system notifications.

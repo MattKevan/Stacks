@@ -1,7 +1,5 @@
 import Foundation
 import StacksKit
-import StacksSync
-import StacksServerKit
 
 /// Toolbar sort order for the library browser (Finder-style). The core's
 /// cross-platform `BookSortOrder` (used by `BookBrowserModel`); the app alias

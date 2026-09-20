@@ -1,11 +1,47 @@
-// Security-scoped bookmarks are an Apple-platform API (`.withSecurityScope`);
-// the headless Linux server opens libraries by path and never needs them.
-#if canImport(Darwin)
+// Security-scoped bookmarks are macOS-only (`.withSecurityScope`). iOS has no
+// sandbox-escape problem — its library lives in the app container and is
+// always accessible — so there the store persists a plain path instead. The
+// headless Linux server opens libraries by path and needs neither.
 import Foundation
 
 public struct ResolvedLibraryBookmark: Sendable {
     public let url: URL
     public let isStale: Bool
+}
+
+/// Serializes a library URL for persistence: a security-scoped bookmark on
+/// macOS, the plain path everywhere else. Single-sourced here so the two
+/// stores (Open Recent and the open set) can't drift apart.
+enum LibraryURLSerialization {
+    static func encode(_ url: URL) throws -> Data {
+        #if os(macOS)
+        try url.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+        #else
+        Data(url.path.utf8)
+        #endif
+    }
+
+    static func decode(_ data: Data, libraryID: UUID) throws -> ResolvedLibraryBookmark {
+        #if os(macOS)
+        var stale = false
+        let url = try URL(
+            resolvingBookmarkData: data,
+            options: .withSecurityScope,
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        )
+        return ResolvedLibraryBookmark(url: url, isStale: stale)
+        #else
+        guard let path = String(data: data, encoding: .utf8) else {
+            throw LibraryBookmarkError.notFound(libraryID)
+        }
+        return ResolvedLibraryBookmark(url: URL(filePath: path), isStale: false)
+        #endif
+    }
 }
 
 public struct LibraryBookmarkStore: @unchecked Sendable {
@@ -18,11 +54,7 @@ public struct LibraryBookmarkStore: @unchecked Sendable {
     }
 
     public func save(_ url: URL, for libraryID: UUID, at date: Date = .now) throws {
-        let data = try url.bookmarkData(
-            options: .withSecurityScope,
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        )
+        let data = try LibraryURLSerialization.encode(url)
         var bookmarks = defaults.dictionary(forKey: key) as? [String: Data] ?? [:]
         bookmarks[libraryID.uuidString] = data
         defaults.set(bookmarks, forKey: key)
@@ -38,14 +70,7 @@ public struct LibraryBookmarkStore: @unchecked Sendable {
         else {
             throw LibraryBookmarkError.notFound(libraryID)
         }
-        var stale = false
-        let url = try URL(
-            resolvingBookmarkData: data,
-            options: .withSecurityScope,
-            relativeTo: nil,
-            bookmarkDataIsStale: &stale
-        )
-        return ResolvedLibraryBookmark(url: url, isStale: stale)
+        return try LibraryURLSerialization.decode(data, libraryID: libraryID)
     }
 
     /// A bookmarked library and when it was last opened, newest first.
@@ -86,4 +111,3 @@ public struct LibraryBookmarkStore: @unchecked Sendable {
 public enum LibraryBookmarkError: Error, Equatable {
     case notFound(UUID)
 }
-#endif

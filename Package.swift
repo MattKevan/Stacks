@@ -16,7 +16,10 @@ import PackageDescription
 
 let package = Package(
     name: "Stacks",
-    platforms: [.macOS(.v15)],
+    // iOS is declared so availability checks resolve against a realistic
+    // minimum (the iOS client links StacksKit/StacksSync); the app targets
+    // themselves deploy to iOS 26.
+    platforms: [.macOS(.v15), .iOS(.v18)],
     products: [
         .library(name: "StacksKit", targets: ["StacksKit"]),
         .library(name: "StacksSync", targets: ["StacksSync"]),
