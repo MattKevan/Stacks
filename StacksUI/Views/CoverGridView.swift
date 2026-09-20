@@ -158,9 +158,15 @@ struct CoverGridView: View {
         return NSItemProvider(object: url as NSURL)
     }
 
+    /// Rubber-band selection is a pointer idiom: on a touch screen the same
+    /// gesture is how you scroll, so a drag that starts on a cover would both
+    /// fight the scroll view and select everything it passed over. It is
+    /// therefore macOS-only — iOS selects by tapping a cover (which pushes the
+    /// detail screen) or via the context menu.
     private var marqueeDrag: some Gesture {
         DragGesture(minimumDistance: 3, coordinateSpace: .named("coverGrid"))
             .onChanged { value in
+                guard PlatformServices.supportsMarqueeSelection else { return }
                 if marqueeStart == nil {
                     marqueeStart = value.startLocation
                     browser.isMarqueeSelecting = true
@@ -172,6 +178,7 @@ struct CoverGridView: View {
                 browser.selection = add ? browser.selection.union(hit) : hit
             }
             .onEnded { _ in
+                guard PlatformServices.supportsMarqueeSelection else { return }
                 browser.isMarqueeSelecting = false
                 marqueeStart = nil
                 marqueeCurrent = nil

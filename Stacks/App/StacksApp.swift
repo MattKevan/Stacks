@@ -2,20 +2,41 @@ import SwiftUI
 
 @main
 struct StacksApp: App {
+    /// Opens the library window at launch (a `Window` scene does not present
+    /// itself; see `AppDelegate`).
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
+    /// Identifies the single library window so the menu bar extra can open or
+    /// focus it.
+    static let libraryWindowID = "library"
+
     @State private var session = LibrarySession()
     @State private var settings = AppSettings()
     /// The macOS-only feature cluster (device store + in-process server).
     /// Injected into the environment; iOS never builds one.
     @State private var mac = MacFeatures()
+    @State private var loginItem = LoginItem()
 
     init() {
         // One-time migration of the Application Support directory so
         // SyncState/outbox state survives the rename (see StacksSupportMigrator).
         StacksSupportMigrator.migrateOnce()
+        // Apply the persisted Dock-icon choice before any scene exists, so the
+        // app never flashes a Dock icon it is about to remove.
+        let hideDockIcon = AppSettings.hideDockIcon()
+        MainActor.assumeIsolated {
+            AppLifecycle.applyActivationPolicy(hideDockIcon: hideDockIcon)
+        }
     }
 
     var body: some Scene {
-        WindowGroup {
+        // A single library window (`Window`, not `WindowGroup`): re-opening
+        // focuses the existing window instead of spawning duplicates, which
+        // matters when the menu bar extra is the only entry point.
+        //
+        // `Window` does NOT present its window at launch — unlike `WindowGroup`
+        // it is created on demand — so `LibraryWindowOpener` below opens it.
+        Window("Stacks", id: Self.libraryWindowID) {
             ContentView(session: session)
                 .environment(mac)
                 .task {
@@ -33,6 +54,21 @@ struct StacksApp: App {
         .commands {
             AppCommands(session: session, mac: mac)
         }
+
+        // The background entry point: reachable with or without a Dock icon.
+        // A template symbol (not the app icon) so it inverts correctly in a
+        // dark menu bar.
+        MenuBarExtra {
+            // The extra always exists, so it is the only dependable place to
+            // open the library window at launch (see `LibraryWindowOpener`).
+            StacksMenuBarContent(
+                session: session, settings: settings, mac: mac, loginItem: loginItem
+            )
+            .publishingLibraryWindowOpener(id: Self.libraryWindowID)
+        } label: {
+            Image(systemName: "books.vertical")
+        }
+
         Settings {
             SettingsView(settings: settings)
                 .environment(\.librarySession, session)

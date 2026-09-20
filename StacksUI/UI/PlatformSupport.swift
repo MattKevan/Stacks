@@ -88,6 +88,17 @@ public enum PlatformServices {
     }
     #endif
 
+    /// Whether rubber-band (drag) selection applies. It is a pointer idiom: on
+    /// a touch screen the same drag scrolls, so the marquee would fight the
+    /// scroll view and select every cover the finger passed over.
+    public static var supportsMarqueeSelection: Bool {
+        #if canImport(AppKit)
+        true
+        #else
+        false
+        #endif
+    }
+
     /// Whether `reveal` does anything. Views hide affordances like "Show in
     /// Finder" where it doesn't (iOS).
     public static var supportsReveal: Bool {

@@ -14,6 +14,27 @@ final class AppSettings {
             ?? automaticallyFetchMissingMetadataDefault
     }
 
+    static let hideDockIconKey = "hideDockIcon"
+    static let hideDockIconDefault = false
+
+    /// The current value, for code paths without a view (app launch applies the
+    /// activation policy before any scene exists).
+    static func hideDockIcon(defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: hideDockIconKey) as? Bool ?? hideDockIconDefault
+    }
+
+    private var _hideDockIcon: Bool
+
+    /// Run as a menu bar app: no Dock icon, no Cmd-Tab entry. The menu bar
+    /// extra is then the only way in, which is why it is always present.
+    var hideDockIcon: Bool {
+        get { _hideDockIcon }
+        set {
+            _hideDockIcon = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.hideDockIconKey)
+        }
+    }
+
     private var _automaticallyFetchMissingMetadata: Bool
 
     /// Enrich imported books that are missing authors/tags from the online
@@ -133,6 +154,8 @@ final class AppSettings {
     }
 
     init(defaults: UserDefaults = .standard) {
+        _hideDockIcon = defaults.object(forKey: Self.hideDockIconKey) as? Bool
+            ?? Self.hideDockIconDefault
         _automaticallyFetchMissingMetadata = defaults.object(forKey: Self.automaticallyFetchMissingMetadataKey) as? Bool
             ?? Self.automaticallyFetchMissingMetadataDefault
         _shareLibraryOverNetwork = defaults.object(forKey: Self.shareLibraryOverNetworkKey) as? Bool
