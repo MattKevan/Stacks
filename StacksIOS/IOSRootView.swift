@@ -157,7 +157,10 @@ extension LibrarySession {
         selectRemote(remote.id)
         switch target {
         case .allBooks:
-            break
+            // A plain "show this library": drop whatever filter was on, so
+            // picking a library always lands on its whole shelf.
+            remote.facetNavigation.clear()
+            remote.isShowingAudiobooks = false
         case .audiobooks:
             remote.isShowingAudiobooks = true
             Task { await remote.refreshBooks() }
@@ -202,64 +205,57 @@ private struct IPadBrowser: View {
     }
 }
 
-/// iPhone: a navigation stack with the browse targets one level down.
-///
-/// The facet values need a screen of their own (there is no middle column), so
-/// "Authors" pushes a value list which pushes the shelf.
+/// iPhone: the shelf is the primary screen. The browse targets — what used to
+/// be this stack's root — sit one sheet away behind the bottom-bar button, so
+/// a launch lands on the library itself. The facet values still need a screen
+/// of their own (there is no middle column), so "Authors" pushes a value list
+/// which pushes the shelf.
 private struct IPhoneBrowser: View {
     @Bindable var session: LibrarySession
     @Binding var isImporting: Bool
     @Binding var isConnectingToServer: Bool
-    @State private var path: [IOSBrowseTarget] = []
+    /// Pushed facet categories, in order: the value list, then the shelf.
+    @State private var path: [FacetType] = []
+    @State private var isBrowsing = false
 
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                Section("Library") {
-                    ForEach([IOSBrowseTarget.allBooks, .audiobooks]) { target in
-                        NavigationLink(value: target) {
-                            Label(target.title, systemImage: target.symbol)
-                        }
+            IOSGridDetail(session: session, browseAction: { isBrowsing = true })
+                .navigationDestination(for: FacetType.self) { category in
+                    IOSFacetValues(session: session, category: category)
+                }
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Add Books", systemImage: "plus") { isImporting = true }
                     }
                 }
-                Section("Browse") {
-                    ForEach(IOSBrowseTarget.facetCategories, id: \.self) { type in
-                        NavigationLink(value: IOSBrowseTarget.category(type)) {
-                            Label(type.displayName, systemImage: type.sidebarSymbol)
-                        }
-                    }
+                .sheet(isPresented: $isBrowsing) {
+                    IOSOptionsSheet(
+                        session: session,
+                        path: $path,
+                        isConnectingToServer: $isConnectingToServer,
+                        isPresented: $isBrowsing
+                    )
                 }
-                IOSSharedSection(
-                    session: session,
-                    path: $path,
-                    isConnectingToServer: $isConnectingToServer
-                )
-            }
-            .navigationTitle(session.home?.name ?? "Stacks")
-            .navigationDestination(for: IOSBrowseTarget.self) { target in
-                IOSTargetDetail(session: session, target: target, path: $path)
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Add Books", systemImage: "plus") { isImporting = true }
-                }
-            }
         }
     }
 }
 
-/// A facet target's screen: the value list, which pushes the filtered shelf.
-private struct IOSTargetDetail: View {
+/// A facet category's screen: the value list, which pushes the filtered shelf.
+///
+/// The category was applied to the active browser before the push (the sheet
+/// does that), so this screen only reads `facetNavigation` — which keeps a
+/// remote's facet browsing on the remote instead of jumping back to home.
+private struct IOSFacetValues: View {
     @Bindable var session: LibrarySession
-    let target: IOSBrowseTarget
-    @Binding var path: [IOSBrowseTarget]
+    let category: FacetType
 
     /// The facet value whose shelf is showing, if any.
     @State private var openValue: String?
 
     var body: some View {
         Group {
-            if case .category = target, let browser = session.browser {
+            if let browser = session.browser {
                 // iOS-specific list: a row pushes the filtered shelf, the
                 // filter sits under the title, and the back button returns.
                 // The shared FacetListView is the Mac's middle column and does
@@ -267,20 +263,10 @@ private struct IOSTargetDetail: View {
                 IOSFacetList(browser: browser) { value in
                     openValue = value
                 }
-                .navigationTitle(target.title)
+                .navigationTitle(category.displayName)
                 .navigationDestination(item: $openValue) { value in
                     IOSFacetValueDetail(session: session, value: value)
                 }
-            } else {
-                IOSGridDetail(session: session)
-                    .navigationTitle(target.title)
-            }
-        }
-        .task {
-            // Entering a facet screen selects the category (the values list is
-            // driven by `facetNavigation.category`).
-            if case .category = target {
-                session.apply(target)
             }
         }
     }
@@ -297,6 +283,12 @@ struct IOSGridDetail: View {
     /// library for All Books/Audiobooks). A facet value passes its own name, so
     /// a filtered shelf is titled with the value rather than the library.
     var title: String?
+    /// Optional leading control for a bottom bar of the shelf's own: the root
+    /// shelf passes the browse button. The system's bottom search field cannot
+    /// host a companion button — a `.bottomBar` toolbar item displaces it
+    /// entirely on iOS 26/27 (verified in the simulator) — so that one screen
+    /// draws its own bar. Every other shelf keeps the system search field.
+    var browseAction: (() -> Void)?
     @State private var searchText = ""
     /// Routed by id (`IndexedBook` is not Hashable) — resolved against the
     /// browser's live list, so a metadata edit re-renders the same screen.
@@ -314,77 +306,204 @@ struct IOSGridDetail: View {
     var body: some View {
         Group {
             if let browser = session.browser {
-                CoverGridView(browser: browser, session: session)
-                    .navigationTitle(title ?? browser.name)
+                if let browseAction {
+                    shelf(browser)
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            ShelfSearchBar(text: $searchText, onBrowse: browseAction)
+                        }
+                } else {
                     // `.automatic` (the default) puts the field *under* the
                     // large title, scrolling with it. Forcing
                     // `.navigationBarDrawer(displayMode: .always)` kept it
                     // permanently in the bar, where it drew over the title —
                     // which is what made the shelf look broken.
-                    .searchable(text: $searchText, prompt: "Search books")
-                    .onChange(of: searchText) { _, newValue in
-                        browser.searchText = newValue
-                    }
-                    // A tap selects (CoverGridView handles that); follow the
-                    // selection with the detail screen. Guarded against
-                    // re-pushing the same book, and against marquee-style
-                    // multi-selection.
-                    .onChange(of: session.selection) { _, _ in
-                        guard let id = selectedBookID, detailBookID != id else { return }
-                        detailBookID = id
-                    }
-                    .navigationDestination(item: $detailBookID) { id in
-                        if let book = book(withID: id) {
-                            IOSBookDetailView(session: session, book: book)
-                        }
-                    }
+                    shelf(browser)
+                        .searchable(text: $searchText, prompt: "Search books")
+                }
             } else {
                 ContentUnavailableView("No Library", systemImage: "books.vertical")
             }
         }
     }
+
+    /// The covers and the selection wiring both shapes share.
+    private func shelf(_ browser: any LibraryBrowser) -> some View {
+        CoverGridView(browser: browser, session: session)
+            .navigationTitle(title ?? browser.name)
+            .onChange(of: searchText) { _, newValue in
+                browser.searchText = newValue
+            }
+            // A tap selects (CoverGridView handles that); follow the
+            // selection with the detail screen. Guarded against re-pushing
+            // the same book, and against marquee-style multi-selection.
+            .onChange(of: session.selection) { _, _ in
+                guard let id = selectedBookID, detailBookID != id else { return }
+                detailBookID = id
+            }
+            .navigationDestination(item: $detailBookID) { id in
+                if let book = book(withID: id) {
+                    IOSBookDetailView(session: session, book: book)
+                }
+            }
+    }
 }
 
-/// The Shared section for iPhone's list: discovered servers connect on tap,
-/// connected ones push straight to their shelf.
-private struct IOSSharedSection: View {
-    @Bindable var session: LibrarySession
-    @Binding var path: [IOSBrowseTarget]
-    @Binding var isConnectingToServer: Bool
+/// The root shelf's own bottom bar: the browse button, then the search field,
+/// side by side — the arrangement the system's bottom search field cannot make
+/// room for.
+private struct ShelfSearchBar: View {
+    @Binding var text: String
+    let onBrowse: () -> Void
 
     var body: some View {
-        Section("Shared") {
-            ForEach(session.remotes) { remote in
-                Button {
-                    session.browseRemote(remote, .allBooks)
-                    path.append(.allBooks)
-                } label: {
-                    RemoteRowLabel(browser: remote) {
-                        session.disconnectRemote(remote.id)
+        HStack(spacing: 10) {
+            Button(action: onBrowse) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 17, weight: .medium))
+                    .frame(width: 44, height: 44)
+                    .background(.quaternary, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Browse")
+
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search books", text: $text)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                if !text.isEmpty {
+                    Button {
+                        text = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(.quaternary, in: Capsule())
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
+    }
+}
+
+/// The browse options, one sheet away from the shelf: the libraries on hand,
+/// then the targets of whichever one is active. Everything here used to be the
+/// compact stack's root screen.
+private struct IOSOptionsSheet: View {
+    @Bindable var session: LibrarySession
+    @Binding var path: [FacetType]
+    @Binding var isConnectingToServer: Bool
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationStack {
+            List {
+                // The library rows switch the browser context; "Browse" picks
+                // what to show in whichever one is current.
+                Section("Library") {
+                    Button {
+                        session.apply(.allBooks)
+                        isPresented = false
+                    } label: {
+                        HStack(spacing: 6) {
+                            Label(session.home?.name ?? "My Library", systemImage: "books.vertical")
+                            Spacer()
+                            if session.activeRemote == nil {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    ForEach(session.remotes) { remote in
+                        Button {
+                            session.browseRemote(remote, .allBooks)
+                            isPresented = false
+                        } label: {
+                            HStack(spacing: 6) {
+                                RemoteRowLabel(browser: remote) {
+                                    session.disconnectRemote(remote.id)
+                                }
+                                if session.activeRemote?.id == remote.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    ForEach(unconnected) { library in
+                        Button {
+                            Task {
+                                await session.connect(to: library)
+                                isPresented = false
+                            }
+                        } label: {
+                            Label(library.name, systemImage: "network")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if session.discovery.libraries.isEmpty && session.remotes.isEmpty {
+                        Text(session.discovery.browseError == nil
+                            ? "Browsing for libraries on this network…"
+                            : "Local Network access is off")
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        isPresented = false
+                        isConnectingToServer = true
+                    } label: {
+                        Label("Connect to Server…", systemImage: "plus.circle")
                     }
                 }
-                .buttonStyle(.plain)
-            }
-            ForEach(unconnected) { library in
-                Button {
-                    Task { await session.connect(to: library) }
-                } label: {
-                    Label(library.name, systemImage: "network")
+                Section("Browse") {
+                    ForEach([IOSBrowseTarget.allBooks, .audiobooks]) { target in
+                        Button {
+                            choose(target)
+                        } label: {
+                            Label(target.title, systemImage: target.symbol)
+                        }
+                    }
+                    ForEach(IOSBrowseTarget.facetCategories, id: \.self) { type in
+                        Button {
+                            choose(.category(type))
+                        } label: {
+                            Label(type.displayName, systemImage: type.sidebarSymbol)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
             }
-            if session.discovery.libraries.isEmpty && session.remotes.isEmpty {
-                Text(session.discovery.browseError == nil
-                    ? "Browsing for libraries on this network…"
-                    : "Local Network access is off")
-                    .foregroundStyle(.secondary)
-            }
-            Button {
-                isConnectingToServer = true
-            } label: {
-                Label("Connect to Server…", systemImage: "plus.circle")
+            .navigationTitle(session.browser?.name ?? "Stacks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { isPresented = false }
+                }
             }
         }
+        .presentationDetents([.medium, .large])
+    }
+
+    /// Applies a target to the *active* library and closes the sheet; a facet
+    /// category also pushes its value list. Browsing a remote is the same flow
+    /// as home — the targets always mean "the library I am in".
+    private func choose(_ target: IOSBrowseTarget) {
+        if let remote = session.activeRemote {
+            session.browseRemote(remote, target)
+        } else {
+            session.apply(target)
+        }
+        if case .category(let type) = target {
+            path.append(type)
+        }
+        isPresented = false
     }
 
     private var unconnected: [DiscoveredLibrary] {
